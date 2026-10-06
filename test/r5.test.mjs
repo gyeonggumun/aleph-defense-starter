@@ -47,13 +47,14 @@ test('stage 3 self-check records unauthenticated denial and deployment protectio
       });
       if (parsed.pathname === '/aleph.json') return new Response(JSON.stringify({
         schema: 'aleph.defense.deployment.v1', step: 3, repoUrl: config.repoUrl,
-        publicAppUrl: config.publicAppUrl,
+        commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
       }), { status: 200, headers: { 'content-type': 'application/json' } });
       return new Response('ok', { status: 200, headers: { 'X-Content-Type-Options': 'nosniff' } });
     };
     const results = await runAttackChecks(config);
     assert.equal(results.length, 4);
     assert.match(results[0].observed, /HTTP 401/u);
+    assert.match(results[2].observed, /\/aleph\.json에서/u);
     assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/']);
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);

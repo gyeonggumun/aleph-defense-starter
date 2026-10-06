@@ -38,9 +38,12 @@ export async function runAttackChecks(config) {
   if (identityResponse.ok) {
     try {
       const identity = await identityResponse.json();
+      const deploymentUrl = new URL(identity?.publicAppUrl);
       deploymentIdentityPresent = identity?.schema === 'aleph.defense.deployment.v1'
         && identity.step === 3 && identity.repoUrl === config.repoUrl
-        && identity.publicAppUrl === config.publicAppUrl;
+        && /^[a-f0-9]{40}$/iu.test(identity.commit ?? '')
+        && deploymentUrl.protocol === 'https:' && deploymentUrl.hostname.endsWith('.vercel.app')
+        && deploymentUrl.pathname === '/' && !deploymentUrl.search && !deploymentUrl.hash;
     } catch {}
   }
   const headerPresent = homeResponse.headers.get('x-content-type-options')?.toLowerCase() === 'nosniff'
