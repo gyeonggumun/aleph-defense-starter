@@ -34,7 +34,8 @@ export function deploymentIdentity(env, config) {
 function isOriginalApiUrl(value) {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
+      && url.pathname.startsWith('/rest/v1/') && url.pathname.length > '/rest/v1/'.length;
   } catch {
     return false;
   }

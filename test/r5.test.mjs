@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import authHandler from '../api/auth.js';
 import { createAuthProxy } from '../src/auth-proxy.mjs';
 import { deploymentIdentity } from '../scripts/deployment-identity.mjs';
 import { runAttackChecks } from '../src/attack-check.mjs';
@@ -38,6 +39,9 @@ test('build identity uses Vercel Git and deployment metadata', () => {
   assert.throws(() => deploymentIdentity(env, {
     ...config, originalApiUrl: `${config.originalApiUrl}?select=*`,
   }));
+  assert.throws(() => deploymentIdentity(env, {
+    ...config, originalApiUrl: 'https://data.example.supabase.co/',
+  }));
 });
 
 test('stage 5 self-check records unauthenticated denial and deployment protections', async () => {
@@ -58,14 +62,18 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
         commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
         originalApiUrl: config.originalApiUrl,
       }), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (parsed.pathname === '/api/auth') return new Response(JSON.stringify({ error: 'NOT_FOUND' }), {
+        status: 404, headers: { 'content-type': 'application/json' },
+      });
       return new Response('ok', { status: 200, headers: { 'X-Content-Type-Options': 'nosniff' } });
     };
     const results = await runAttackChecks(config);
-    assert.equal(results.length, 5);
+    assert.equal(results.length, 6);
     assert.match(results[0].observed, /HTTP 401/u);
     assert.match(results[2].observed, /\/aleph\.json에서/u);
     assert.match(results[4].observed, /API 키 없음/u);
-    assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/']);
+    assert.match(results[5].observed, /JSON 404/u);
+    assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/api/auth']);
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
   } finally {
@@ -123,6 +131,18 @@ test('auth proxy sends password login to Supabase with the server-only API key',
   assert.equal(response.headers['cache-control'], 'no-store');
 });
 
+test('auth proxy rejects oversized credential bodies before contacting Supabase', async () => {
+  let calls = 0;
+  const proxy = createAuthProxy({ config: authProxyConfig, env: authProxyEnv,
+    fetchImpl: async () => { calls += 1; return new Response(null, { status: 204 }); } });
+  const response = responseStub();
+  await proxy({ method: 'POST', query: { path: 'token', grant_type: 'password' }, headers: {},
+    body: { email: 'a@example.test', password: 'p'.repeat(1025) },
+  }, response);
+  assert.equal(response.statusCode, 400);
+  assert.equal(calls, 0);
+});
+
 test('auth proxy forwards only a signed-in JWT for logout and rejects non-Auth routes', async () => {
   let outgoing;
   let calls = 0;
@@ -146,4 +166,11 @@ test('auth proxy forwards only a signed-in JWT for logout and rejects non-Auth r
   await proxy({ method: 'GET', query: { path: 'rest/v1/vault_notes' }, headers: {} }, deniedResponse);
   assert.equal(deniedResponse.statusCode, 404);
   assert.equal(calls, 1);
+});
+
+test('Vercel auth route rejects oversized request bodies with a JSON error', async () => {
+  const response = responseStub();
+  await authHandler({ method: 'POST', body: 'x'.repeat(16 * 1024 + 1) }, response);
+  assert.equal(response.statusCode, 413);
+  assert.deepEqual(response.payload, { error: 'REQUEST_TOO_LARGE' });
 });

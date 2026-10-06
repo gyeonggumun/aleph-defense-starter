@@ -74,8 +74,13 @@
         return fetch(request);
       }
       const proxyUrl = new URL('/api/auth', window.location.origin);
-      proxyUrl.searchParams.set('path', url.pathname.slice('/auth/v1/'.length));
-      url.searchParams.forEach((value, key) => proxyUrl.searchParams.append(key, value));
+      const authPath = url.pathname.slice('/auth/v1/'.length);
+      proxyUrl.searchParams.set('path', authPath);
+      const allowedQuery = authPath === 'token' ? ['grant_type']
+        : authPath === 'logout' ? ['scope'] : [];
+      for (const key of allowedQuery) {
+        for (const value of url.searchParams.getAll(key)) proxyUrl.searchParams.append(key, value);
+      }
       return fetch(new Request(proxyUrl, request));
     };
     const supabase = createClient(supabaseUrl, 'server-auth-proxy', {

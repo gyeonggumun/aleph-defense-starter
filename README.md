@@ -61,7 +61,7 @@ Supabase Auth의 공식 JavaScript SDK로 이메일·비밀번호 로그인과 �
 
 `aleph.config.json`의 `originalApiUrl`은 쿼리 문자열이 없는 `https://wypzkqzsgnnzpjcztlbz.supabase.co/rest/v1/vault_notes`입니다. 현재 읽기 전용 확인에서 `anon`·`authenticated`에는 테이블 권한이 없었고, RLS는 켜져 있었습니다. 직접 권한을 명시적으로 회수하는 SQL은 저장소 밖의 `outputs/step5-revoke-public-data-access.sql`에 있으며 아직 적용하지 않았습니다. 이 SQL은 `public.vault_notes`만 대상으로 하며 서버 전용 키의 권한은 건드리지 않습니다.
 
-Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다. SDK의 사용자 인증 요청은 같은 출처의 `/api/auth`가 서버에서 중계하고, 비밀번호 로그인·세션 갱신·로그아웃만 허용합니다. `SUPABASE_SECRET_KEY`는 서버 함수가 `apikey` 헤더에만 넣으며 화면 코드에는 Supabase API 키가 없습니다. 메모 CRUD는 계속 `/api/notes`에서 로그인·소유자를 확인합니다.
+Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다. SDK의 사용자 인증 요청은 같은 출처의 `/api/auth`가 서버에서 중계하고, 비밀번호 로그인·세션 갱신·로그아웃만 허용합니다. `SUPABASE_SECRET_KEY`는 서버 함수가 `apikey` 헤더에만 넣으며 화면 코드에는 Supabase API 키가 없습니다. 중계기는 인증 외 경로, 과도한 자격 증명 본문, 16 KiB 초과 요청을 거부합니다. 메모 CRUD는 계속 `/api/notes`에서 로그인·소유자를 확인합니다.
 
 ### 5단계에서 직접 확인할 항목
 

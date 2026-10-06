@@ -1,6 +1,9 @@
 const BEARER_JWT = /^Bearer ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/u;
 const GRANT_TYPES = new Set(['password', 'refresh_token']);
 const LOGOUT_SCOPES = new Set(['global', 'local', 'others']);
+const MAX_EMAIL_BYTES = 320;
+const MAX_PASSWORD_BYTES = 1024;
+const MAX_REFRESH_TOKEN_BYTES = 8192;
 
 function queryValue(request, name) {
   const value = request.query?.[name];
@@ -54,12 +57,17 @@ export function createAuthProxy({ config, env = process.env, fetchImpl = fetch }
       const input = parseBody(request);
       if (grantType === 'password') {
         if (typeof input?.email !== 'string' || !input.email.trim()
-            || typeof input.password !== 'string' || !input.password) {
+            || Buffer.byteLength(input.email, 'utf8') > MAX_EMAIL_BYTES
+            || typeof input.password !== 'string' || !input.password
+            || Buffer.byteLength(input.password, 'utf8') > MAX_PASSWORD_BYTES) {
           return json(response, 400, { error: 'INVALID_CREDENTIALS' });
         }
         body = { email: input.email, password: input.password };
       } else {
         if (typeof input?.refresh_token !== 'string' || !input.refresh_token.trim()) {
+          return json(response, 400, { error: 'INVALID_SESSION' });
+        }
+        if (Buffer.byteLength(input.refresh_token, 'utf8') > MAX_REFRESH_TOKEN_BYTES) {
           return json(response, 400, { error: 'INVALID_SESSION' });
         }
         body = { refresh_token: input.refresh_token };

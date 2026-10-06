@@ -12,11 +12,12 @@ export async function runAttackChecks(config) {
   }
 
   const options = { redirect: 'error', signal: AbortSignal.timeout(10000) };
-  const [apiResponse, publicResponse, identityResponse, homeResponse] = await Promise.all([
+  const [apiResponse, publicResponse, identityResponse, homeResponse, authProxyResponse] = await Promise.all([
     fetch(new URL('/api/notes', app), options),
     fetch(new URL('/data.json', app), options),
     fetch(new URL('/aleph.json', app), options),
     fetch(new URL('/', app), options),
+    fetch(new URL('/api/auth?path=rest%2Fv1%2Fvault_notes', app), { ...options, method: 'GET' }),
   ]);
   let apiErrorJson = false;
   if ([401, 403].includes(apiResponse.status)
@@ -60,6 +61,14 @@ export async function runAttackChecks(config) {
         && !/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/u.test(source);
     } catch {}
   }
+  let authProxyClosed = false;
+  if (authProxyResponse.status === 404
+      && /application\/(?:[a-z.+-]*\+)?json/iu.test(authProxyResponse.headers.get('content-type') ?? '')) {
+    try {
+      const result = await authProxyResponse.json();
+      authProxyClosed = result?.error === 'NOT_FOUND';
+    } catch {}
+  }
 
   return [
     { attackId: 'anonymous_notes_api', expected: '비로그인 목록 요청은 401/403 JSON 오류',
@@ -77,5 +86,8 @@ export async function runAttackChecks(config) {
     { attackId: 'browser_supabase_key_absent', expected: '첫 화면 코드에 Supabase API 키가 없음',
       observed: browserSupabaseKeyAbsent ? '첫 화면 코드에 Supabase API 키 없음'
         : '첫 화면 코드에 Supabase API 키가 있거나 확인 실패' },
+    { attackId: 'auth_proxy_restricts_routes', expected: '인증 중계가 Auth 경로 이외의 요청을 거부',
+      observed: authProxyClosed ? '인증 중계가 데이터 경로 요청을 JSON 404로 거부'
+        : `인증 중계 외부 경로 거부 확인 실패: HTTP ${authProxyResponse.status}` },
   ];
 }
