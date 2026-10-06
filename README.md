@@ -14,6 +14,8 @@
 
 현재 `data.json`과 `public/data.json`의 `notes`는 비어 있습니다. 정적 화면은 `/api/notes`를 호출하고, 서버 함수가 Supabase의 `public.vault_notes`에서 가상 메모 네 건을 읽습니다. `SUPABASE_URL`과 `SUPABASE_SECRET_KEY`는 Vercel 프로젝트의 서버 환경변수로만 등록합니다. 키 값은 저장소, 브라우저 코드, README, 로그, 제출 묶음에 넣지 마세요.
 
+현재 Vercel 배포 주소: https://aleph-defense-starter-ten.vercel.app
+
 `vault_notes`에는 `owner_id uuid`가 있으며 `auth.users` 외래키는 없습니다. RLS를 켜고 `anon`, `authenticated`, `public`의 테이블 권한을 모두 회수하며, 서버 함수에서만 사용하는 `service_role`에 읽기 권한을 줍니다. 이 단계의 `/api/notes`는 로그인 없이 열려 있으므로 가상 자료만 유지해야 합니다.
 
 ### 2단계에서 직접 확인할 항목
