@@ -55,13 +55,29 @@ Supabase Auth의 공식 JavaScript SDK로 이메일·비밀번호 로그인과 �
 3. 요청 본문에 다른 `owner_id`를 넣어도 새 메모는 로그인 사용자 소유로 저장되고, 기존 메모 소유권은 바뀌지 않는지 확인합니다.
 4. 익명 `/api/notes` 요청이 401/403 JSON 오류인지, `/data.json`의 `notes`가 비어 있는지, `/aleph.json`의 단계가 4인지, 첫 화면에 `nosniff` 또는 CSP가 있는지 번들 점검합니다.
 
+## 5단계: 메모 자료 요청을 서버로 모으기
+
+브라우저 코드에서 Supabase 테이블을 직접 조회·변경하는 `.from(...)` 호출은 없습니다. 메모 목록·단건 조회·추가·수정·삭제는 같은 출처의 `/api/notes`와 `/api/notes/:id`를 호출합니다. Supabase Auth SDK의 로그인·로그아웃 호출은 그대로 유지합니다. API 함수는 서버에서 토큰과 `owner_id`를 계속 검증합니다.
+
+`aleph.config.json`의 `originalApiUrl`은 쿼리 문자열이 없는 `https://wypzkqzsgnnzpjcztlbz.supabase.co/rest/v1/vault_notes`입니다. 현재 읽기 전용 확인에서 `anon`·`authenticated`에는 테이블 권한이 없었고, RLS는 켜져 있었습니다. 직접 권한을 명시적으로 회수하는 SQL은 저장소 밖의 `outputs/step5-revoke-public-data-access.sql`에 있으며 아직 적용하지 않았습니다. 이 SQL은 `public.vault_notes`만 대상으로 하며 서버 전용 키의 권한은 건드리지 않습니다.
+
+현재 브라우저에 있는 Supabase publishable key는 Auth SDK 초기화에만 쓰입니다. 제작 1 지시에 따라 Auth 호출을 유지했으므로, 브라우저 소스에서 공개 키를 제거하는 100점 보너스 조건은 충족하지 않습니다. 테이블 직접 접근은 키를 숨기는 대신 PostgreSQL 권한으로 거부하도록 설계합니다.
+
+### 5단계에서 직접 확인할 항목
+
+1. SQL Editor에서 권한 회수 SQL의 전후 조회를 확인하고 실행합니다. 기대 결과는 `anon`·`authenticated` 모두 테이블 권한이 없는 것입니다.
+2. 브라우저에서 A로 로그인해 메모 CRUD가 `/api/notes` 서버 함수를 통해 계속 동작하는지 확인합니다.
+3. B의 타인 메모 요청은 계속 404로 거부되고 비로그인 요청은 401/403 JSON 오류인지 확인합니다.
+4. 공개 anon key로 원본 `originalApiUrl`을 요청해 행이 반환되지 않는지 심판과 직접 확인합니다.
+5. `/aleph.json`의 허용 경로, 첫 화면 보안 헤더, 공개 `data.json`의 빈 `notes`를 번들 점검합니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 이 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
 
 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 익명 `/api/notes` JSON 거부, 빈 `/data.json`, `/aleph.json`의 4단계 정보, 첫 화면 보안 헤더를 확인합니다. 이 점검은 A/B 계정의 소유자 접근 검사를 수행하지 않습니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 익명 `/api/notes` JSON 거부, 빈 `/data.json`, `/aleph.json`의 5단계 정보, 첫 화면 보안 헤더를 확인합니다. 이 점검은 A/B 계정의 소유자 접근 검사나 원본 Data API의 anon-key 접근을 수행하지 않습니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
