@@ -57,7 +57,7 @@ Supabase Auth의 공식 JavaScript SDK로 이메일·비밀번호 로그인과 �
 
 ## 5단계: 메모 자료 요청을 서버로 모으기
 
-브라우저 코드에서 Supabase 테이블을 직접 조회·변경하는 `.from(...)` 호출은 없습니다. 메모 목록·단건 조회·추가·수정·삭제는 같은 출처의 `/api/notes`와 `/api/notes/:id`를 호출합니다. Supabase Auth SDK의 로그인·로그아웃 호출은 그대로 유지합니다. API 함수는 서버에서 토큰과 `owner_id`를 계속 검증합니다.
+브라우저 코드에서 Supabase 테이블을 직접 조회·변경하는 `.from(...)` 호출은 없습니다. 메모 목록·단건 조회·추가·수정·삭제는 같은 출처의 `/api/notes`와 `/api/notes/:id`를 호출합니다. Supabase Auth SDK의 로그인·로그아웃 호출은 유지하고, 인증 요청은 `/api/auth`가 중계하며 서버 함수의 `SUPABASE_SECRET_KEY`만 사용합니다. 실제 Supabase API 키는 화면 코드에 없습니다. 메모 API는 서버에서 토큰과 `owner_id`를 계속 검증합니다.
 
 `aleph.config.json`의 `originalApiUrl`은 쿼리 문자열이 없는 `https://wypzkqzsgnnzpjcztlbz.supabase.co/rest/v1/vault_notes`입니다. 현재 읽기 전용 확인에서 `anon`·`authenticated`에는 테이블 권한이 없었고, RLS는 켜져 있었습니다. 직접 권한을 명시적으로 회수하는 SQL은 저장소 밖의 `outputs/step5-revoke-public-data-access.sql`에 있으며 아직 적용하지 않았습니다. 이 SQL은 `public.vault_notes`만 대상으로 하며 서버 전용 키의 권한은 건드리지 않습니다.
 

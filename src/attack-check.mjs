@@ -52,6 +52,14 @@ export async function runAttackChecks(config) {
   }
   const headerPresent = homeResponse.headers.get('x-content-type-options')?.toLowerCase() === 'nosniff'
     || Boolean(homeResponse.headers.get('content-security-policy'));
+  let browserSupabaseKeyAbsent = false;
+  if (homeResponse.ok) {
+    try {
+      const source = await homeResponse.text();
+      browserSupabaseKeyAbsent = !/sb_(?:publishable|secret)_[A-Za-z0-9_-]+/iu.test(source)
+        && !/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/u.test(source);
+    } catch {}
+  }
 
   return [
     { attackId: 'anonymous_notes_api', expected: '비로그인 목록 요청은 401/403 JSON 오류',
@@ -66,5 +74,8 @@ export async function runAttackChecks(config) {
     { attackId: 'security_header', expected: '첫 화면에 nosniff 또는 CSP 보안 헤더가 있음',
       observed: headerPresent ? '첫 화면 응답에서 보안 헤더 확인'
         : '첫 화면 응답에 nosniff/CSP 헤더가 없음' },
+    { attackId: 'browser_supabase_key_absent', expected: '첫 화면 코드에 Supabase API 키가 없음',
+      observed: browserSupabaseKeyAbsent ? '첫 화면 코드에 Supabase API 키 없음'
+        : '첫 화면 코드에 Supabase API 키가 있거나 확인 실패' },
   ];
 }

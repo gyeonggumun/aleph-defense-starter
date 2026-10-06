@@ -66,10 +66,21 @@
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2?bundle';
 
-    const supabase = createClient(
-      'https://wypzkqzsgnnzpjcztlbz.supabase.co',
-      'sb_publishable_3aYNLG9sCs8U0krAMUsykw_c7NHE-gk',
-    );
+    const supabaseUrl = 'https://wypzkqzsgnnzpjcztlbz.supabase.co';
+    const authFetch = async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      if (url.origin !== new URL(supabaseUrl).origin || !url.pathname.startsWith('/auth/v1/')) {
+        return fetch(request);
+      }
+      const proxyUrl = new URL('/api/auth', window.location.origin);
+      proxyUrl.searchParams.set('path', url.pathname.slice('/auth/v1/'.length));
+      url.searchParams.forEach((value, key) => proxyUrl.searchParams.append(key, value));
+      return fetch(new Request(proxyUrl, request));
+    };
+    const supabase = createClient(supabaseUrl, 'server-auth-proxy', {
+      global: { fetch: authFetch },
+    });
     const loginForm = document.querySelector('#login-form');
     const sessionPanel = document.querySelector('#session-panel');
     const notesPanel = document.querySelector('#notes-panel');

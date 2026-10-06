@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { createAuthProxy } from '../src/auth-proxy.mjs';
 import { deploymentIdentity } from '../scripts/deployment-identity.mjs';
 import { runAttackChecks } from '../src/attack-check.mjs';
 
@@ -59,13 +61,89 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
       return new Response('ok', { status: 200, headers: { 'X-Content-Type-Options': 'nosniff' } });
     };
     const results = await runAttackChecks(config);
-    assert.equal(results.length, 4);
+    assert.equal(results.length, 5);
     assert.match(results[0].observed, /HTTP 401/u);
     assert.match(results[2].observed, /\/aleph\.json에서/u);
+    assert.match(results[4].observed, /API 키 없음/u);
     assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/']);
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+function responseStub() {
+  return {
+    headers: {}, statusCode: 0, payload: null,
+    setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
+    status(value) { this.statusCode = value; return this; },
+    json(value) { this.payload = value; return this; },
+    send(value) { this.payload = value; return this; },
+  };
+}
+
+const authProxyConfig = {
+  identityProvider: { issuer: 'https://student.supabase.co/auth/v1' },
+};
+const authProxyEnv = {
+  SUPABASE_URL: 'https://student.supabase.co',
+  SUPABASE_SECRET_KEY: 'server-secret-test-key',
+};
+
+test('browser keeps Auth SDK calls but ships no Supabase API key', async () => {
+  const source = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /sb_(?:publishable|secret)_[A-Za-z0-9_-]+/iu);
+  assert.match(source, /supabase\.auth\.signInWithPassword/u);
+  assert.match(source, /supabase\.auth\.signOut/u);
+  assert.match(source, /new URL\('\/api\/auth'/u);
+});
+
+test('auth proxy sends password login to Supabase with the server-only API key', async () => {
+  let outgoing;
+  const proxy = createAuthProxy({ config: authProxyConfig, env: authProxyEnv,
+    fetchImpl: async (url, init) => {
+      outgoing = { url: new URL(url), init };
+      return new Response(JSON.stringify({ access_token: 'test.access.token' }), {
+        status: 200, headers: { 'content-type': 'application/json' },
+      });
+    } });
+  const response = responseStub();
+  await proxy({ method: 'POST', query: { path: 'token', grant_type: 'password' },
+    headers: { authorization: 'Bearer server-auth-proxy' },
+    body: { email: 'a@example.test', password: 'example-password', extra: 'discarded' },
+  }, response);
+  assert.equal(outgoing.url.href, 'https://student.supabase.co/auth/v1/token?grant_type=password');
+  assert.equal(outgoing.init.headers.get('apikey'), authProxyEnv.SUPABASE_SECRET_KEY);
+  assert.equal(outgoing.init.headers.get('authorization'), null);
+  assert.deepEqual(JSON.parse(outgoing.init.body), {
+    email: 'a@example.test', password: 'example-password',
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers['cache-control'], 'no-store');
+});
+
+test('auth proxy forwards only a signed-in JWT for logout and rejects non-Auth routes', async () => {
+  let outgoing;
+  let calls = 0;
+  const proxy = createAuthProxy({ config: authProxyConfig, env: authProxyEnv,
+    fetchImpl: async (url, init) => {
+      calls += 1;
+      outgoing = { url: new URL(url), init };
+      return new Response(null, { status: 204 });
+    } });
+  const jwt = 'header.payload.signature';
+  const logoutResponse = responseStub();
+  await proxy({ method: 'POST', query: { path: 'logout', scope: 'global' },
+    headers: { authorization: `Bearer ${jwt}` }, body: undefined,
+  }, logoutResponse);
+  assert.equal(outgoing.url.href, 'https://student.supabase.co/auth/v1/logout?scope=global');
+  assert.equal(outgoing.init.headers.get('apikey'), authProxyEnv.SUPABASE_SECRET_KEY);
+  assert.equal(outgoing.init.headers.get('authorization'), `Bearer ${jwt}`);
+  assert.equal(logoutResponse.statusCode, 204);
+
+  const deniedResponse = responseStub();
+  await proxy({ method: 'GET', query: { path: 'rest/v1/vault_notes' }, headers: {} }, deniedResponse);
+  assert.equal(deniedResponse.statusCode, 404);
+  assert.equal(calls, 1);
 });
