@@ -43,6 +43,8 @@ export async function runAttackChecks(config) {
       const originalApiUrl = new URL(identity?.originalApiUrl);
       deploymentIdentityPresent = identity?.schema === 'aleph.defense.deployment.v1'
         && identity.step === config.step && identity.repoUrl === config.repoUrl
+        && JSON.stringify(identity.allowedRoutes) === JSON.stringify(config.allowedRoutes)
+        && Array.isArray(identity.allowedRoutes) && identity.allowedRoutes.length > 0
         && identity.originalApiUrl === config.originalApiUrl
         && originalApiUrl.protocol === 'https:' && !originalApiUrl.username && !originalApiUrl.password
         && !originalApiUrl.search && !originalApiUrl.hash
@@ -77,8 +79,8 @@ export async function runAttackChecks(config) {
     { attackId: 'public_json_empty', expected: '공개 data.json에 메모와 1단계 표시가 없음',
       observed: publicJsonEmpty ? '공개 data.json의 notes가 비어 있고 1단계 표시가 없음'
         : `공개 data.json 비움 확인 실패: HTTP ${publicResponse.status}` },
-    { attackId: 'deployment_identity', expected: '배포 주소의 /aleph.json이 5단계 정보를 반환',
-      observed: deploymentIdentityPresent ? '/aleph.json에서 저장소·배포 주소·5단계 정보 확인'
+    { attackId: 'deployment_identity', expected: '/aleph.json에 5단계 정보와 허용 경로가 있음',
+      observed: deploymentIdentityPresent ? '/aleph.json에서 저장소·배포 주소·5단계 정보·허용 경로 확인'
         : `/aleph.json 확인 실패: HTTP ${identityResponse.status}` },
     { attackId: 'security_header', expected: '첫 화면에 nosniff 또는 CSP 보안 헤더가 있음',
       observed: headerPresent ? '첫 화면 응답에서 보안 헤더 확인'

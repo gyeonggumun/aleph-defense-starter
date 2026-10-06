@@ -15,6 +15,7 @@ export function deploymentIdentity(env, config) {
       || typeof config.judgeIssuer !== 'string'
       || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
       || (config.step >= 5 && !isOriginalApiUrl(config.originalApiUrl))
+      || (config.step >= 3 && !hasAllowedRoutes(config.allowedRoutes))
       || typeof config.sampleMarker !== 'string'
       || !/^[A-Z0-9_]{1,80}$/u.test(config.sampleMarker)) {
     throw new Error('배포 식별 정보를 확인할 수 없습니다. Vercel 시스템 환경변수와 단계 설정을 확인하세요.');
@@ -27,8 +28,14 @@ export function deploymentIdentity(env, config) {
     publicAppUrl: `https://${host.toLowerCase()}`,
     judgeIssuer: config.judgeIssuer,
     sampleMarker: config.sampleMarker,
+    ...(config.step >= 3 ? { allowedRoutes: [...config.allowedRoutes] } : {}),
     ...(config.step >= 5 ? { originalApiUrl: config.originalApiUrl } : {}),
   };
+}
+
+function hasAllowedRoutes(routes) {
+  return Array.isArray(routes) && routes.length > 0
+    && routes.every(route => typeof route === 'string' && /^(GET|POST|PUT|PATCH|DELETE) \/[a-z0-9/_:-]+$/iu.test(route));
 }
 
 function isOriginalApiUrl(value) {
