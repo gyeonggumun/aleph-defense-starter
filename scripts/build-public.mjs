@@ -17,6 +17,9 @@ if (config.step === 1) {
   console.log('1단계 실습용 공개 자료를 public/data.json에 복사했습니다.');
 } else {
   if (data.notes.length !== 0) throw new Error('2단계 이후에는 data.json에 메모를 남기면 안 됩니다.');
+  if (config.sampleMarker && JSON.stringify(data).includes(config.sampleMarker)) {
+    throw new Error('2단계 이후 공개 data.json에 1단계 확인 표시를 남기면 안 됩니다.');
+  }
   await writeFile(output, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
   console.log('2단계 이후 공개 data.json이 비어 있음을 확인했습니다.');
 }

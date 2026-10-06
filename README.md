@@ -22,7 +22,7 @@
 
 1. 배포된 화면에 가상 메모 네 건이 보입니다.
 2. 배포된 `/api/notes`를 비로그인으로 열면 가상 자료 네 건이 반환됩니다.
-3. 배포된 `/data.json`의 `notes` 배열은 비어 있습니다.
+3. 배포된 `/data.json`의 `notes` 배열은 비어 있고 1단계 확인 표시 `SAMPLE_NOTE_1`도 없습니다.
 4. GitHub 기본 브랜치의 `data.json`과 `public/data.json`을 열고, GitHub 코드 검색으로 가상 메모 제목과 본문을 각각 검색해 최신 파일에 남지 않았는지 확인합니다.
 5. 이전 공개 커밋과 과거 Vercel 배포는 이 변경으로 삭제되거나 비공개 처리되지 않습니다. 과거 노출까지 해결됐다고 간주하지 마세요.
 
@@ -34,7 +34,7 @@
 
 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 저장소의 `src/attack-check.mjs`는 실제 배포가 된 뒤 `/data.json`을 비로그인으로 요청해 공개 가상 메모의 확인 표시를 읽습니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 `/api/notes`에서 가상 메모 네 건을 확인하고 `/data.json`에 메모와 1단계 표시가 없는지 확인합니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 

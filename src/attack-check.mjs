@@ -34,7 +34,8 @@ export async function runAttackChecks(config) {
   if (publicResponse.ok) {
     try {
       const data = await publicResponse.json();
-      publicJsonEmpty = Array.isArray(data?.notes) && data.notes.length === 0;
+      publicJsonEmpty = Array.isArray(data?.notes) && data.notes.length === 0
+        && !JSON.stringify(data).includes(config.sampleMarker);
     } catch {
       // A non-JSON response is a failed check, not a successful deployment.
     }
@@ -43,8 +44,8 @@ export async function runAttackChecks(config) {
     { attackId: 'anonymous_notes_api', expected: '비로그인 서버 API에서 가상 메모 네 건 확인',
       observed: apiNotesVisible ? '비로그인 요청에서 가상 메모 네 건 확인'
         : `비로그인 API에서 네 건을 확인하지 못함 (HTTP ${apiResponse.status})` },
-    { attackId: 'public_json_empty', expected: '공개 data.json에 메모가 없음',
-      observed: publicJsonEmpty ? '공개 data.json의 notes가 비어 있음'
-        : `공개 data.json이 비어 있지 않거나 확인할 수 없음 (HTTP ${publicResponse.status})` },
+    { attackId: 'public_json_empty', expected: '공개 data.json에 메모와 1단계 표시가 없음',
+      observed: publicJsonEmpty ? '공개 data.json의 notes와 1단계 표시가 없음'
+        : `공개 data.json에 메모나 1단계 표시가 남았거나 확인할 수 없음 (HTTP ${publicResponse.status})` },
   ];
 }
