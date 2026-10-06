@@ -4,7 +4,7 @@ import { deploymentIdentity } from '../scripts/deployment-identity.mjs';
 import { runAttackChecks } from '../src/attack-check.mjs';
 
 const config = {
-  step: 3,
+  step: 4,
   judgeIssuer: 'https://aleph-judge-production.up.railway.app/defense/judge',
   sampleMarker: 'SAMPLE_NOTE_1',
   repoUrl: 'https://github.com/student-a/aleph-defense',
@@ -21,7 +21,7 @@ const env = {
 test('build identity uses Vercel Git and deployment metadata', () => {
   assert.deepEqual(deploymentIdentity(env, config), {
     schema: 'aleph.defense.deployment.v1',
-    step: 3,
+    step: 4,
     repoUrl: 'https://github.com/student-a/aleph-defense',
     commit: 'a'.repeat(40),
     publicAppUrl: 'https://student-defense-123.vercel.app',
@@ -32,7 +32,7 @@ test('build identity uses Vercel Git and deployment metadata', () => {
   assert.throws(() => deploymentIdentity({ ...env, VERCEL_GIT_COMMIT_SHA: 'short' }, config));
 });
 
-test('stage 3 self-check records unauthenticated denial and deployment protections', async () => {
+test('stage 4 self-check records unauthenticated denial and deployment protections', async () => {
   const originalFetch = globalThis.fetch;
   const requested = [];
   try {
@@ -46,7 +46,7 @@ test('stage 3 self-check records unauthenticated denial and deployment protectio
         status: 200, headers: { 'content-type': 'application/json' },
       });
       if (parsed.pathname === '/aleph.json') return new Response(JSON.stringify({
-        schema: 'aleph.defense.deployment.v1', step: 3, repoUrl: config.repoUrl,
+        schema: 'aleph.defense.deployment.v1', step: 4, repoUrl: config.repoUrl,
         commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
       }), { status: 200, headers: { 'content-type': 'application/json' } });
       return new Response('ok', { status: 200, headers: { 'X-Content-Type-Options': 'nosniff' } });

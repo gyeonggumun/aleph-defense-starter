@@ -82,7 +82,7 @@ export async function handleNotesRequest(request, response) {
       const { data, error } = await context.database
         .from('vault_notes')
         .select('id,title,content')
-        .or(`owner_id.is.null,owner_id.eq.${identity.userId}`)
+        .eq('owner_id', identity.userId)
         .order('created_at', { ascending: true });
       if (error) return respond(response, 502, { error: 'DATA_SOURCE_UNAVAILABLE' });
       return respond(response, 200, (data ?? []).map(noteFields));
@@ -90,7 +90,7 @@ export async function handleNotesRequest(request, response) {
 
     if (method === 'GET') {
       const { data, error } = await context.database.from('vault_notes')
-        .select('id,title,content').eq('id', id).maybeSingle();
+        .select('id,title,content').eq('id', id).eq('owner_id', identity.userId).maybeSingle();
       if (error) return respond(response, 502, { error: 'DATA_SOURCE_UNAVAILABLE' });
       return data ? respond(response, 200, noteFields(data))
         : respond(response, 404, { error: 'NOT_FOUND' });
@@ -115,14 +115,15 @@ export async function handleNotesRequest(request, response) {
       const fields = validateNote(parseBody(request));
       if (!fields) return respond(response, 400, { error: 'INVALID_NOTE' });
       const { data, error } = await context.database.from('vault_notes')
-        .update(fields).eq('id', id).select('id,title,content').maybeSingle();
+        .update(fields).eq('id', id).eq('owner_id', identity.userId)
+        .select('id,title,content,owner_id').maybeSingle();
       if (error) return respond(response, 502, { error: 'DATA_SOURCE_UNAVAILABLE' });
-      return data ? respond(response, 200, noteFields(data))
+      return data?.owner_id === identity.userId ? respond(response, 200, noteFields(data))
         : respond(response, 404, { error: 'NOT_FOUND' });
     }
 
     const { data, error } = await context.database.from('vault_notes')
-      .delete().eq('id', id).select('id').maybeSingle();
+      .delete().eq('id', id).eq('owner_id', identity.userId).select('id').maybeSingle();
     if (error) return respond(response, 502, { error: 'DATA_SOURCE_UNAVAILABLE' });
     return data ? respond(response, 200, { id: data.id })
       : respond(response, 404, { error: 'NOT_FOUND' });

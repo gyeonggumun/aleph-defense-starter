@@ -38,13 +38,30 @@ Supabase Auth의 공식 JavaScript SDK로 이메일·비밀번호 로그인과 �
 
 3단계 저장점에서는 `npm run bundle`이 실제 배포의 비로그인 API 응답, 빈 공개 `data.json`, `/aleph.json`, 첫 화면 보안 헤더를 조회합니다. 이 자기 점검은 메모를 변경하지 않으며 실제 계정 로그인과 CRUD는 배포 화면에서 확인합니다.
 
+마지막 3단계 저장점 커밋은 제출 자기 점검의 배포 주소 비교를 보정했습니다. 인증·자료 API 동작은 바꾸지 않았습니다.
+
+## 4단계: 로그인 사용자의 메모만 허용
+
+`src/notes-api.mjs`는 토큰에서 서버가 검증한 `identity.userId`만 소유자 기준으로 씁니다. 목록·단건 조회·수정·삭제는 모두 `owner_id`가 이 ID인 행만 대상으로 하며, 수정은 기존 행과 반환된 새 행의 소유자를 확인합니다. 추가할 때도 본문에 적힌 `owner_id`는 사용하지 않고 검증된 사용자 ID를 저장합니다. 다른 사용자 메모와 없는 메모는 같은 `404 NOT_FOUND` JSON으로 응답합니다. `aleph.config.json`에는 실제 GET·POST·PUT·DELETE 경로를 유지합니다.
+
+현재 `public.vault_notes`는 RLS가 켜져 있고, 마지막 읽기 전용 확인 시 `anon`과 `authenticated`의 직접 테이블 권한은 없었습니다. 서버 API는 기존 서버 전용 키를 사용합니다. authenticated 역할에 CRUD 권한과 소유자별 RLS 정책을 적용하는 SQL은 제안만 하며, DB에는 실행하지 않았습니다. 사용자가 SQL Editor에서 제안 SQL을 검토·실행한 뒤 `information_schema.role_table_grants`와 `has_table_privilege` 결과를 확인해야 합니다.
+
+4단계 과제 설명은 기존 메모 세 건을 전제로 하지만 실제 테이블에는 네 건이 있습니다. 소유자 지정 SQL은 오래된 세 행의 ID 미리보기를 먼저 보여 주고, A/B 이메일을 SQL Editor에서 직접 채우도록 합니다. 미리보기에서 A로 지정할 세 건이 맞는지 확인한 뒤 실행하세요. 현재 네 행은 하나의 owner_id에 연결되어 있으나 그 계정이 A인지 B인지는 확인하지 않았습니다. B용 가상 시험 메모 SQL도 제안만 했으며 아직 추가하지 않았습니다.
+
+### 4단계에서 직접 확인할 항목
+
+1. A로 로그인해 자기 메모 목록·단건 조회·추가·수정·삭제를 확인합니다.
+2. B로 로그인해 A의 메모 ID를 요청해 읽기·수정·삭제가 모두 404로 거부되는지 확인합니다.
+3. 요청 본문에 다른 `owner_id`를 넣어도 새 메모는 로그인 사용자 소유로 저장되고, 기존 메모 소유권은 바뀌지 않는지 확인합니다.
+4. 익명 `/api/notes` 요청이 401/403 JSON 오류인지, `/data.json`의 `notes`가 비어 있는지, `/aleph.json`의 단계가 4인지, 첫 화면에 `nosniff` 또는 CSP가 있는지 번들 점검합니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 이 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
 
 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 `/api/notes`에서 가상 메모 네 건을 확인하고 `/data.json`에 메모와 1단계 표시가 없는지 확인합니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 익명 `/api/notes` JSON 거부, 빈 `/data.json`, `/aleph.json`의 4단계 정보, 첫 화면 보안 헤더를 확인합니다. 이 점검은 A/B 계정의 소유자 접근 검사를 수행하지 않습니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
