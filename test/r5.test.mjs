@@ -7,6 +7,7 @@ const config = {
   step: 5,
   judgeIssuer: 'https://aleph-judge-production.up.railway.app/defense/judge',
   sampleMarker: 'SAMPLE_NOTE_1',
+  originalApiUrl: 'https://data.example.supabase.co/rest/v1/vault_notes',
   repoUrl: 'https://github.com/student-a/aleph-defense',
   publicAppUrl: 'https://student-defense.vercel.app',
 };
@@ -27,9 +28,14 @@ test('build identity uses Vercel Git and deployment metadata', () => {
     publicAppUrl: 'https://student-defense-123.vercel.app',
     judgeIssuer: config.judgeIssuer,
     sampleMarker: config.sampleMarker,
+    originalApiUrl: config.originalApiUrl,
   });
   assert.throws(() => deploymentIdentity({ ...env, VERCEL_GIT_PROVIDER: undefined }, config));
   assert.throws(() => deploymentIdentity({ ...env, VERCEL_GIT_COMMIT_SHA: 'short' }, config));
+  assert.throws(() => deploymentIdentity(env, { ...config, originalApiUrl: undefined }));
+  assert.throws(() => deploymentIdentity(env, {
+    ...config, originalApiUrl: `${config.originalApiUrl}?select=*`,
+  }));
 });
 
 test('stage 5 self-check records unauthenticated denial and deployment protections', async () => {
@@ -48,6 +54,7 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
       if (parsed.pathname === '/aleph.json') return new Response(JSON.stringify({
         schema: 'aleph.defense.deployment.v1', step: 5, repoUrl: config.repoUrl,
         commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
+        originalApiUrl: config.originalApiUrl,
       }), { status: 200, headers: { 'content-type': 'application/json' } });
       return new Response('ok', { status: 200, headers: { 'X-Content-Type-Options': 'nosniff' } });
     };

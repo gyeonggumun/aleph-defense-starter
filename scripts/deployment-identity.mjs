@@ -14,6 +14,7 @@ export function deploymentIdentity(env, config) {
       || !HOST.test(host || '') || !Number.isInteger(config?.step) || config.step < 1 || config.step > 12
       || typeof config.judgeIssuer !== 'string'
       || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
+      || (config.step >= 5 && !isOriginalApiUrl(config.originalApiUrl))
       || typeof config.sampleMarker !== 'string'
       || !/^[A-Z0-9_]{1,80}$/u.test(config.sampleMarker)) {
     throw new Error('배포 식별 정보를 확인할 수 없습니다. Vercel 시스템 환경변수와 단계 설정을 확인하세요.');
@@ -26,5 +27,15 @@ export function deploymentIdentity(env, config) {
     publicAppUrl: `https://${host.toLowerCase()}`,
     judgeIssuer: config.judgeIssuer,
     sampleMarker: config.sampleMarker,
+    ...(config.step >= 5 ? { originalApiUrl: config.originalApiUrl } : {}),
   };
+}
+
+function isOriginalApiUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
 }

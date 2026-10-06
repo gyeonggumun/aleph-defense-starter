@@ -39,8 +39,12 @@ export async function runAttackChecks(config) {
     try {
       const identity = await identityResponse.json();
       const deploymentUrl = new URL(identity?.publicAppUrl);
+      const originalApiUrl = new URL(identity?.originalApiUrl);
       deploymentIdentityPresent = identity?.schema === 'aleph.defense.deployment.v1'
         && identity.step === config.step && identity.repoUrl === config.repoUrl
+        && identity.originalApiUrl === config.originalApiUrl
+        && originalApiUrl.protocol === 'https:' && !originalApiUrl.username && !originalApiUrl.password
+        && !originalApiUrl.search && !originalApiUrl.hash
         && /^[a-f0-9]{40}$/iu.test(identity.commit ?? '')
         && deploymentUrl.protocol === 'https:' && deploymentUrl.hostname.endsWith('.vercel.app')
         && deploymentUrl.pathname === '/' && !deploymentUrl.search && !deploymentUrl.hash;
