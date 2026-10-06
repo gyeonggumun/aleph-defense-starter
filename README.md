@@ -28,6 +28,16 @@
 
 로컬 정적 확인은 `node scripts/build-public.mjs --local`로 합니다. 이 명령은 배포나 API 연결을 증명하지 않습니다. 제출 묶음은 2단계 저장점 커밋 뒤 `bundle-notes.json`에 실행한 점검 결과만 적고 `npm run bundle`을 실행합니다.
 
+## 3단계: 진짜 로그인과 메모 관리
+
+Supabase Auth의 공식 JavaScript SDK로 이메일·비밀번호 로그인과 로그아웃을 제공합니다. 프로젝트 URL과 publishable key는 브라우저에서 사용하는 공개 값입니다. `SUPABASE_SECRET_KEY`는 Vercel 서버 환경변수에서만 읽습니다. 서버는 `src/verify-login.mjs`로 토큰을 검증하고, 브라우저가 보낸 사용자 ID나 역할은 사용하지 않습니다.
+
+로그인한 사용자는 `/api/notes`에서 메모 목록을 보고 추가할 수 있으며, `/api/notes/:id`에서 한 건을 읽고 수정하거나 삭제할 수 있습니다. 새 메모의 `owner_id`는 서버가 확인한 사용자 ID입니다. 이전 단계의 소유자 없는 가상 메모 네 건도 로그인 화면에서 계속 볼 수 있습니다. 3단계에서는 단건 경로에 소유자 검사가 없으므로 로그인한 다른 사용자가 ID를 알면 남의 메모를 읽고 바꾸거나 지울 수 있습니다. 이 접근 제어는 4단계에서 추가합니다.
+
+`aleph.config.json`에는 Supabase Auth 발급자·대상·JWKS 주소와 실제 GET·POST·PUT·DELETE 경로를 기록합니다. 발급자 주소는 공개 정보이며 비밀 키는 기록하지 않습니다. `vercel.json`은 `/api/notes/:id`를 Vercel 함수로 연결하고, 첫 화면에 `X-Content-Type-Options: nosniff`를 계속 붙입니다.
+
+3단계 저장점에서는 `npm run bundle`이 실제 배포의 비로그인 API 응답, 빈 공개 `data.json`, `/aleph.json`, 첫 화면 보안 헤더를 조회합니다. 이 자기 점검은 메모를 변경하지 않으며 실제 계정 로그인과 CRUD는 배포 화면에서 확인합니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 이 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
