@@ -51,7 +51,7 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     counts[action] += 1;
   }
 
-  if (moduleKey === 'brute-force') {
+  if (['brute-force', 'web-injection'].includes(moduleKey)) {
     const integrationPath = join(root, 'xdr', moduleKey, 'apply-actions.mjs');
     try {
       await access(integrationPath);

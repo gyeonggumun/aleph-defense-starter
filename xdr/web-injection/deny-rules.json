@@ -1,0 +1,77 @@
+{
+  "schema": "aleph.xdr.web-injection-deny.v1",
+  "rules": [
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "203.0.113.10",
+      "evidenceAlertId": "wi-01",
+      "reason": "repeated_sql_syntax",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "203.0.113.10",
+      "evidenceAlertId": "wi-02",
+      "reason": "repeated_script_injection",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "198.51.100.15",
+      "evidenceAlertId": "wi-03",
+      "reason": "repeated_path_traversal",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "192.0.2.15",
+      "evidenceAlertId": "wi-04",
+      "reason": "repeated_sql_syntax",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "203.0.113.18",
+      "evidenceAlertId": "wi-05",
+      "reason": "repeated_sql_syntax",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "198.51.100.18",
+      "evidenceAlertId": "wi-06",
+      "reason": "repeated_command_separator",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "192.0.2.21",
+      "evidenceAlertId": "wi-07",
+      "reason": "repeated_path_traversal",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    },
+    {
+      "ruleId": "xdr.web_injection_source_ip",
+      "sourceAddress": "203.0.113.22",
+      "evidenceAlertId": "wi-08",
+      "reason": "repeated_sql_syntax",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:42:40.101Z",
+      "expiresAt": "2026-10-08T12:42:40.101Z"
+    }
+  ]
+}

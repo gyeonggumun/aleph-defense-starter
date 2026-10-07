@@ -83,6 +83,16 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 확인 명령은 `node xdr/brute-force/read-alerts.mjs`와 `npm run xdr:run -- brute-force`입니다. 첫 명령의 출력 줄 수가 경보 수와 같아야 하며, 두 번째 결과에서 block·alert·record를 확인하고 정상 경보가 block되지 않는지 봅니다.
 
+## 보너스 xdr-02 저장점 · 웹 주입
+
+- `node xdr/web-injection/read-alerts.mjs`: 원본 26건을 시각·주소·계정·수준·설명 26줄로 정제합니다. 비밀값 마스킹은 기존 읽기 모듈을 재사용하고 원본은 수정하지 않습니다.
+- `patterns.json`은 [MITRE ATT&CK T1190](https://attack.mitre.org/techniques/T1190/)을 근거로 SQL·스크립트·경로 이탈·명령 주입 신호와 애매한 입력을 구분합니다. 동일 주소 8회 이상·수준 10 이상은 학습용 기준입니다. Wazuh의 집계 횟수를 읽으며 독립 단일 경보 사이의 시간창 집계기는 아닙니다.
+- `decide.mjs`는 import 없이 원본·정제 입력과 격리 환경을 지원합니다. 애매한 요청만 `globalThis.Jev.reviewWebInjectionAlert({pattern, ruleLevel, count})` 또는 `review`로 검토합니다. 연결 없음·실패·1.5초 초과 시 confidence 0.5의 alert입니다. 실제 Jev 연결은 제공되지 않아 로컬 시험은 대체 응답자와 실패 처리를 검증했습니다. 반복 증거 없는 요청은 모델 점수가 높아도 0.84 이하로 제한합니다.
+- `npm run xdr:run -- web-injection`: `result.json`, 근거 경보 번호·24시간 만료를 갖는 `deny-rules.json`, `xdr/alerts.log`를 갱신합니다. 기존 무차별 로그인 규칙과 로그는 보존합니다.
+- 로컬 결과: **block 8 / alert 9 / record 9, 정상 경보 차단 0**. 26건의 개별 판정, 단독 import·빈 VM 실행, Jev 실패, 만료·정상 주소 허용을 시험했습니다. 실제 심판 점수는 재제출 후 확인해야 합니다.
+- 판정기는 웹 주입 규칙을 추가로 읽습니다. 기존 `starter.deny`는 유지하므로 정상 경보가 XDR에서 차단되지 않는 것과 전체 판정기의 allow는 다릅니다. 실제 계약의 `signals.source`가 `none`인 운영 경로에는 검증된 출발 주소 연결이 추가로 필요합니다.
+- `aleph.config.json`의 기존 5단계 자료실 설정·발급자·경로·원본 주소는 이 보너스가 변경하지 않습니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 5단계부터는 쿼리·인증 정보가 없는 HTTPS `originalApiUrl`도 함께 기록합니다. 필수 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.

@@ -1,0 +1,12 @@
+{
+  "mitreAttack": "T1190",
+  "source": "https://attack.mitre.org/techniques/T1190/",
+  "thresholdNote": "수준 10 이상·동일 주소 8회 이상은 이 학습 모듈의 기준이며 MITRE의 공식 임계값이 아닙니다. 반복 횟수는 Wazuh 집계 경보를 사용합니다.",
+  "patterns": [
+    { "name": "repeated_sql_syntax", "conditions": "동일 주소의 SQL 구문·조회 연결 표기 8회 이상, 규칙 수준 10 이상", "evidence": "T1190의 공개 애플리케이션 악용 사례에는 SQL 주입이 포함됩니다." },
+    { "name": "repeated_script_injection", "conditions": "동일 주소의 스크립트 삽입 표기 8회 이상, 규칙 수준 10 이상", "evidence": "T1190이 설명하는 웹 입력 취약점 악용의 후보 신호로 사용하며 단순 수업 단어는 공격으로 확정하지 않습니다." },
+    { "name": "repeated_path_traversal", "conditions": "동일 주소의 경로 이탈·반복 ../ 표기 8회 이상, 규칙 수준 10 이상", "evidence": "T1190의 공개 애플리케이션 악용 사례에는 디렉터리 탐색 취약점이 포함됩니다." },
+    { "name": "repeated_command_separator", "conditions": "동일 주소의 명령 구분자·명령 주입 표기 8회 이상, 규칙 수준 10 이상", "evidence": "T1190의 Cutting Edge 사례는 공개 애플리케이션 명령 주입 악용을 설명합니다." },
+    { "name": "ambiguous_web_input", "conditions": "수준 4 이상에서 따옴표·주입 관련 단어·비정상적으로 긴 주소가 있지만 명확한 반복 주입 증거 부족", "evidence": "T1190 관련 웹 입력 이상을 검토하는 후보 조건이며 긴 주소나 키워드만으로 취약점 악용을 입증하지 않습니다." }
+  ]
+}

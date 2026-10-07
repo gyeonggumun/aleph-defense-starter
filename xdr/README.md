@@ -37,6 +37,6 @@
 node scripts/xdr-run.mjs brute-force
 ```
 
-`npm run xdr:run -- brute-force` 도 같은 명령입니다. 실행기는 해당 경보마다 `decide` 를 부르고, 결과를 `xdr/<moduleKey>/result.json` 에 씁니다. `brute-force`는 결정 뒤 `apply-actions.mjs`로 만료 시각·근거 경보 ID가 있는 임시 차단 규칙과 알림 로그를 갱신합니다. 형식은 `aleph.xdr.result.v1` 이고, `decisions` 에는 경보 id·행동·확신도·이유가, `counts` 에는 `block`·`alert`·`record` 건수가 있습니다.
+`npm run xdr:run -- brute-force` 도 같은 명령입니다. 웹 주입은 `npm run xdr:run -- web-injection`입니다. 실행기는 해당 경보마다 `decide` 를 부르고, 결과를 `xdr/<moduleKey>/result.json` 에 씁니다. `brute-force`와 `web-injection`은 결정 뒤 `apply-actions.mjs`로 만료 시각·근거 경보 ID가 있는 임시 차단 규칙과 알림 로그를 갱신합니다. 형식은 `aleph.xdr.result.v1` 이고, `decisions` 에는 경보 id·행동·확신도·이유가, `counts` 에는 `block`·`alert`·`record` 건수가 있습니다.
 
 반환 형식이 틀린 경보는 `record` 로 남고, 오류 한 줄이 출력됩니다. 실행기 자체는 네트워크를 쓰지 않습니다. 판정자는 격리된 환경에서 같은 명령을 다시 실행해 결과를 봅니다. 이미 커밋된 `result.json` 만으로 판정이 끝나지 않습니다.
