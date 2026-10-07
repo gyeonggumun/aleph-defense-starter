@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -25,20 +25,13 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   if (fixture?.schema !== 'aleph.xdr.fixture.v1' || fixture.moduleKey !== moduleKey || !Array.isArray(fixture.alerts)) {
     throw new Error('경보 묶음 형식이 아닙니다.');
   }
-  let alerts = fixture.alerts;
-  let getAlertId = alert => typeof alert?.id === 'string' ? alert.id : '';
-  if (moduleKey === 'brute-force') {
-    const reader = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'read-alerts.mjs')).href);
-    alerts = await reader.readAlerts(join(root, 'xdr', 'fixtures', `${moduleKey}.json`));
-    getAlertId = reader.alertIdFor;
-  }
   const loaded = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'decide.mjs')).href);
   if (typeof loaded.decide !== 'function') throw new Error('decide 함수를 내보내지 않았습니다.');
 
   const decisions = [];
   const counts = { block: 0, alert: 0, record: 0 };
-  for (const alert of alerts) {
-    const alertId = getAlertId(alert);
+  for (const alert of fixture.alerts) {
+    const alertId = alert && typeof alert.id === 'string' ? alert.id : '';
     let action = 'record';
     let confidence = 0;
     let reason = '반환 형식이 아닙니다';
@@ -56,6 +49,17 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     }
     decisions.push({ alertId, action, confidence, reason });
     counts[action] += 1;
+  }
+
+  if (moduleKey === 'brute-force') {
+    const integrationPath = join(root, 'xdr', moduleKey, 'apply-actions.mjs');
+    try {
+      await access(integrationPath);
+      const { applyActions } = await import(pathToFileURL(integrationPath).href);
+      await applyActions({ root, alerts: fixture.alerts, decisions });
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
   }
 
   const result = { schema: 'aleph.xdr.result.v1', moduleKey, decisions, counts };

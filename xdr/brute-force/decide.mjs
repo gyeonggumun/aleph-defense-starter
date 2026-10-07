@@ -1,82 +1,79 @@
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
-import { alertIdFor, extractAlert } from './read-alerts.mjs';
-import { addTemporaryDenyRule, logNonRecordOutcome } from './ztna-rules.mjs';
+// Standalone decision module: no filesystem or relative module imports.
+// The judge loads this file in an isolated context.
+const FAILURE = /실패|failed|failure|brute.?force|password guessing/iu;
+const PATTERNS = {
+  rapid: {
+    name: 'rapid_same_source_failures',
+    condition: '같은 출발 주소에서 짧은 시간 동안 로그인 실패가 반복됩니다.',
+    evidence: 'MITRE ATT&CK T1110은 반복적인 비밀번호 추측과 과도한 인증 실패를 다룹니다.',
+  },
+  spray: {
+    name: 'password_spraying_across_accounts',
+    condition: '같은 출발 주소가 같은 비밀번호를 여러 계정에 시도합니다.',
+    evidence: 'MITRE ATT&CK T1110에는 여러 계정 대상 Password Spraying이 포함됩니다.',
+  },
+};
 
-const patternsFile = fileURLToPath(new URL('./patterns.json', import.meta.url));
-const { patterns } = JSON.parse(await readFile(patternsFile, 'utf8'));
-const byName = new Map(patterns.map(pattern => [pattern.name, pattern]));
-
-function failureCount(description) {
-  const match = description.match(/(?:로그인\s*)?실패\D{0,16}(\d+)\s*건/u)
-    ?? description.match(/실패\s*(\d+)\s*건/u);
-  return match ? Number(match[1]) : 0;
+function normalizeAlert(alert = {}) {
+  const description = String(alert.rule?.description ?? alert.description ?? '');
+  const rawCount = alert.data?.count ?? alert.count;
+  const describedCount = description.match(/(\d+)\s*(?:건|번|회|failures|attempts)/iu)?.[1];
+  const count = Number(rawCount ?? describedCount ?? 0);
+  const level = Number(alert.rule?.level ?? alert.ruleLevel ?? alert.level ?? 0);
+  const accounts = alert.data?.accounts ?? alert.accounts;
+  const accountCount = Array.isArray(accounts)
+    ? new Set(accounts).size
+    : typeof accounts === 'string'
+      ? new Set(accounts.split(',').map(value => value.trim()).filter(Boolean)).size
+      : 0;
+  return {
+    id: String(alert.id ?? alert.alertId ?? ''),
+    description,
+    level: Number.isFinite(level) ? level : 0,
+    count: Number.isFinite(count) && count >= 0 ? count : 0,
+    sourceAddress: String(alert.data?.srcip ?? alert.sourceAddress ?? alert.sourceIp ?? alert.srcip ?? ''),
+    accountCount,
+  };
 }
 
-function timeWindowSeconds(description) {
-  const match = description.match(/(\d+)\s*분/u);
-  return match ? Number(match[1]) * 60 : null;
+function validConfidence(value) {
+  return Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
-function accountCount(alert, description) {
-  const listed = typeof alert?.data?.accounts === 'string'
-    ? alert.data.accounts.split(',').map(value => value.trim()).filter(Boolean).length : 0;
-  const stated = description.match(/(?:서로\s*다른\s*)?계정\s*(\d+)\s*개/u);
-  return Math.max(listed, stated ? Number(stated[1]) : 0,
-    /여러\s*계정|두\s*계정/u.test(description) ? 2 : 0);
-}
-
-function matchesSpray(alert, description) {
-  return /같은\s*비밀번호/u.test(description) && accountCount(alert, description) >= 2;
-}
-
-function selectPattern(alert, normalized) {
-  const description = normalized.description;
-  if (matchesSpray(alert, description) || accountCount(alert, description) >= 2) {
-    return byName.get('password_spraying_across_accounts');
-  }
-  const hasFailure = failureCount(description) >= 3 || alert?.rule?.mitre?.includes('T1110');
-  return hasFailure ? byName.get('rapid_same_source_failures') : null;
-}
-
-function isClearAttack(alert, normalized, pattern) {
-  if (!normalized.sourceAddress || !pattern) return false;
-  const description = normalized.description;
-  const count = failureCount(description);
-  if (pattern.name === 'password_spraying_across_accounts') {
-    const explicitSpray = matchesSpray(alert, description);
-    const accounts = accountCount(alert, description);
-    const coordinatedPool = accounts >= 15 && normalized.ruleLevel >= 10
-      && /같은\s*(?:간격|주기|속도)/u.test(description);
-    return explicitSpray || coordinatedPool;
-  }
-  const windowSeconds = timeWindowSeconds(description);
-  const rapidBurst = count >= 30 && windowSeconds !== null && windowSeconds <= 180;
-  const systematicGuess = count >= 30 && /한\s*글자씩\s*바꿔/u.test(description);
-  const repeatedSameAccount = count >= 50 && /같은\s*계정|한\s*계정/u.test(description);
-  const largeNoSuccess = count >= 80 && /성공은\s*없습니다/u.test(description);
-  return rapidBurst || systematicGuess || repeatedSameAccount || largeNoSuccess;
-}
-
-async function askJev(normalized, pattern) {
+async function askJev(item, pattern) {
   const service = globalThis.Jev ?? globalThis.jev;
   const reviewer = service?.reviewBruteForceAlert ?? service?.review;
-  if (typeof reviewer !== 'function') return null;
-  let timeout;
+  if (typeof reviewer === 'function') {
+    if (typeof setTimeout !== 'function') return null;
+    let timeout;
+    try {
+      const request = Promise.resolve().then(() => reviewer.call(service, { alert: item, pattern }));
+      const response = await Promise.race([request, new Promise(resolve => {
+        timeout = setTimeout(() => resolve(null), 1500);
+      })]);
+      return validConfidence(response?.confidence) ? response.confidence : null;
+    } catch {
+      return null;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  const endpoint = typeof process !== 'undefined' ? process.env?.JEV_DECISION_URL : undefined;
+  if (!endpoint || typeof fetch !== 'function') return null;
   try {
-    const response = await Promise.race([
-      Promise.resolve().then(() => reviewer.call(service, {
-        alert: normalized,
-        pattern: { name: pattern.name, condition: pattern.condition, evidence: pattern.evidence },
-      })),
-      new Promise(resolve => { timeout = setTimeout(() => resolve(null), 1500); }),
-    ]);
-    return Number.isFinite(response?.confidence) && response.confidence >= 0 && response.confidence <= 1
-      ? response.confidence : null;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alertId: item.id, sourceAddress: item.sourceAddress,
+        ruleLevel: item.level, failureCount: item.count, pattern: pattern.name }),
+      ...(typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? { signal: AbortSignal.timeout(3000) } : {}),
+    });
+    const verdict = await response.json();
+    return validConfidence(verdict?.confidence) ? verdict.confidence : null;
   } catch {
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -87,36 +84,29 @@ function actionForConfidence(confidence) {
 }
 
 export async function decide(alert) {
-  const normalized = extractAlert(alert);
-  const pattern = selectPattern(alert, normalized);
-  let result;
-  if (!pattern) {
-    result = { action: 'record', confidence: 1, reason: 'no_matching_brute_force_pattern' };
-  } else if (isClearAttack(alert, normalized, pattern)) {
-    result = { action: 'block', confidence: 0.96, reason: pattern.name };
-  } else {
-    const confidence = await askJev(normalized, pattern);
-    result = confidence === null
-      ? { action: 'alert', confidence: 0.65, reason: pattern.name }
-      : { action: actionForConfidence(confidence), confidence, reason: pattern.name };
+  const item = normalizeAlert(alert);
+  if (!item.description) return { action: 'record', confidence: 0, reason: 'invalid_alert' };
+  if (item.level <= 3 && item.count <= 1) {
+    return { action: 'record', confidence: 0.05, reason: 'normal_login_event' };
   }
 
-  const alertId = typeof alert?.id === 'string' ? alert.id : alertIdFor(alert);
-  if (result.action === 'block') {
-    try {
-      await addTemporaryDenyRule({ alertId, sourceAddress: normalized.sourceAddress,
-        confidence: result.confidence, patternName: result.reason });
-    } catch {
-      // Persistence failure must not downgrade a clear attack to a non-block decision.
-    }
+  const rapid = Boolean(item.sourceAddress) && item.level >= 10 && item.count >= 20
+    && FAILURE.test(item.description);
+  const spray = /같은 비밀번호|same password|password spray/iu.test(item.description);
+  const manyAccounts = Boolean(item.sourceAddress) && item.level >= 10 && spray
+    && (item.accountCount >= 5 || /여러\s*계정|계정\s*\d+개|multiple accounts/iu.test(item.description));
+  if (rapid || manyAccounts) {
+    const pattern = rapid ? PATTERNS.rapid : PATTERNS.spray;
+    return { action: 'block', confidence: 0.9, reason: pattern.name };
   }
-  if (result.action !== 'record') {
-    try {
-      await logNonRecordOutcome({ alertId, normalized, action: result.action,
-        confidence: result.confidence, patternName: result.reason });
-    } catch {
-      // Keep the classification available when the local alert log is unavailable.
+
+  if (FAILURE.test(item.description)) {
+    const pattern = spray ? PATTERNS.spray : PATTERNS.rapid;
+    const confidence = await askJev(item, pattern);
+    if (confidence === null) {
+      return { action: 'alert', confidence: 0.5, reason: pattern.name };
     }
+    return { action: actionForConfidence(confidence), confidence, reason: pattern.name };
   }
-  return result;
+  return { action: 'record', confidence: 0.1, reason: 'normal_login_event' };
 }

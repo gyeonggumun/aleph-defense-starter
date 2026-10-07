@@ -41,7 +41,6 @@ test('가짜 decide 가 result.json 형식과 건수를 만듭니다', async () 
     await mkdir(join(dir, 'xdr', 'fixtures'), { recursive: true });
     await mkdir(join(dir, 'xdr', 'brute-force'), { recursive: true });
     await cp(join(root, 'scripts', 'xdr-run.mjs'), join(dir, 'scripts', 'xdr-run.mjs'));
-    await cp(join(root, 'xdr', 'brute-force', 'read-alerts.mjs'), join(dir, 'xdr', 'brute-force', 'read-alerts.mjs'));
     const alerts = ['a-block', 'a-alert', 'a-record', 'a-bad', 'a-throw'].map((id) => ({
       id,
       timestamp: '2026-09-27T09:00:00+09:00',
@@ -53,13 +52,11 @@ test('가짜 decide 가 result.json 형식과 건수를 만듭니다', async () 
       schema: 'aleph.xdr.fixture.v1', moduleKey: 'brute-force', alerts,
     }, null, 2)}\n`);
     await writeFile(join(dir, 'xdr', 'brute-force', 'decide.mjs'), `
-      import { alertIdFor } from './read-alerts.mjs';
       export async function decide(alert) {
-        const id = alertIdFor(alert);
-        if (id === 'a-bad') return { action: 'ignore', confidence: 2, reason: '틀림' };
-        if (id === 'a-throw') throw new Error('학생 코드 오류');
-        if (id === 'a-block') return { action: 'block', confidence: 0.9, reason: '명확한 공격' };
-        if (id === 'a-alert') return Promise.resolve({ action: 'alert', confidence: 0.6, reason: '애매한 시도' });
+        if (alert.id === 'a-bad') return { action: 'ignore', confidence: 2, reason: '틀림' };
+        if (alert.id === 'a-throw') throw new Error('학생 코드 오류');
+        if (alert.id === 'a-block') return { action: 'block', confidence: 0.9, reason: '명확한 공격' };
+        if (alert.id === 'a-alert') return Promise.resolve({ action: 'alert', confidence: 0.6, reason: '애매한 시도' });
         return { action: 'record', confidence: 0, reason: '정상 이벤트' };
       }
     `);

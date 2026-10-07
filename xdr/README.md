@@ -27,6 +27,8 @@
 
 명확한 공격은 `block`, 애매한 시도는 `alert`, 정상 이벤트는 `record` 입니다. 경보 원본은 고치지 않습니다.
 
+심판은 `decide.mjs`를 격리 실행하므로 이 파일은 단독으로 실행 가능해야 합니다. Node.js 모듈·상대 경로 파일·저장소 쓰기를 판정 모듈에서 하지 말고, 차단 규칙과 알림 기록은 `apply-actions.mjs`에서 처리합니다.
+
 ## 실행
 
 저장소 루트에서 항목 키 하나를 넣습니다.
@@ -35,6 +37,6 @@
 node scripts/xdr-run.mjs brute-force
 ```
 
-`npm run xdr:run -- brute-force` 도 같은 명령입니다. 실행기는 해당 경보마다 `decide` 를 부르고, 결과를 `xdr/<moduleKey>/result.json` 에 씁니다. 형식은 `aleph.xdr.result.v1` 이고, `decisions` 에는 경보 id·행동·확신도·이유가, `counts` 에는 `block`·`alert`·`record` 건수가 있습니다.
+`npm run xdr:run -- brute-force` 도 같은 명령입니다. 실행기는 해당 경보마다 `decide` 를 부르고, 결과를 `xdr/<moduleKey>/result.json` 에 씁니다. `brute-force`는 결정 뒤 `apply-actions.mjs`로 만료 시각·근거 경보 ID가 있는 임시 차단 규칙과 알림 로그를 갱신합니다. 형식은 `aleph.xdr.result.v1` 이고, `decisions` 에는 경보 id·행동·확신도·이유가, `counts` 에는 `block`·`alert`·`record` 건수가 있습니다.
 
 반환 형식이 틀린 경보는 `record` 로 남고, 오류 한 줄이 출력됩니다. 실행기 자체는 네트워크를 쓰지 않습니다. 판정자는 격리된 환경에서 같은 명령을 다시 실행해 결과를 봅니다. 이미 커밋된 `result.json` 만으로 판정이 끝나지 않습니다.

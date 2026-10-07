@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const fixturePath = fileURLToPath(new URL('../fixtures/brute-force.json', import.meta.url));
-const alertIds = new WeakMap();
 const sensitivePatterns = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
   /\b(?:password|passwd|pwd|secret|token|api[_ -]?key|authorization)\b\s*[:=]\s*["']?[^\s,"';]+/giu,
@@ -35,21 +34,13 @@ export function extractAlert(alert) {
   };
 }
 
-export function alertIdFor(alert) {
-  return alertIds.get(alert) ?? '';
-}
-
 export async function readAlerts(path = fixturePath) {
   const fixture = JSON.parse(await readFile(path, 'utf8'));
   if (fixture?.schema !== 'aleph.xdr.fixture.v1' || fixture.moduleKey !== 'brute-force'
       || !Array.isArray(fixture.alerts)) {
     throw new Error('무차별 대입 경보 묶음 형식이 아닙니다.');
   }
-  return fixture.alerts.map(alert => {
-    const normalized = extractAlert(alert);
-    if (typeof alert?.id === 'string') alertIds.set(normalized, alert.id);
-    return normalized;
-  });
+  return fixture.alerts.map(extractAlert);
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];

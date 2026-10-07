@@ -6,90 +6,90 @@
       "sourceAddress": "203.0.113.10",
       "evidenceAlertId": "bf-01",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:21.958Z",
-      "expiresAt": "2026-10-08T08:47:21.958Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "203.0.113.10",
       "evidenceAlertId": "bf-02",
       "reason": "password_spraying_across_accounts",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:21.977Z",
-      "expiresAt": "2026-10-08T08:47:21.977Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "198.51.100.20",
       "evidenceAlertId": "bf-03",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:21.990Z",
-      "expiresAt": "2026-10-08T08:47:21.990Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "192.0.2.30",
       "evidenceAlertId": "bf-04",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.003Z",
-      "expiresAt": "2026-10-08T08:47:22.003Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "203.0.113.21",
       "evidenceAlertId": "bf-05",
-      "reason": "password_spraying_across_accounts",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.016Z",
-      "expiresAt": "2026-10-08T08:47:22.016Z"
+      "reason": "rapid_same_source_failures",
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "198.51.100.44",
       "evidenceAlertId": "bf-06",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.029Z",
-      "expiresAt": "2026-10-08T08:47:22.029Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "203.0.113.15",
       "evidenceAlertId": "bf-07",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.043Z",
-      "expiresAt": "2026-10-08T08:47:22.043Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "192.0.2.18",
       "evidenceAlertId": "bf-08",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.055Z",
-      "expiresAt": "2026-10-08T08:47:22.055Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "198.51.100.8",
       "evidenceAlertId": "bf-09",
       "reason": "password_spraying_across_accounts",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.067Z",
-      "expiresAt": "2026-10-08T08:47:22.067Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
       "sourceAddress": "203.0.113.40",
       "evidenceAlertId": "bf-10",
       "reason": "rapid_same_source_failures",
-      "confidence": 0.96,
-      "createdAt": "2026-10-07T08:47:22.079Z",
-      "expiresAt": "2026-10-08T08:47:22.079Z"
+      "confidence": 0.9,
+      "createdAt": "2026-10-07T12:20:10.652Z",
+      "expiresAt": "2026-10-08T12:20:10.652Z"
     }
   ]
 }
