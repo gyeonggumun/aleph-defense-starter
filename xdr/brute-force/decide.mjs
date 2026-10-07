@@ -40,12 +40,21 @@ function selectPattern(alert, normalized) {
 
 function isClearAttack(alert, normalized, pattern) {
   if (!normalized.sourceAddress || !pattern) return false;
+  const description = normalized.description;
+  const count = failureCount(description);
   if (pattern.name === 'password_spraying_across_accounts') {
-    return matchesSpray(alert, normalized.description) && accountCount(alert, normalized.description) >= 5;
+    const accounts = accountCount(alert, description);
+    const explicitSpray = matchesSpray(alert, description) && accounts >= 5;
+    const coordinatedPool = accounts >= 15 && normalized.ruleLevel >= 10
+      && /같은\s*(?:간격|주기|속도)/u.test(description);
+    return explicitSpray || coordinatedPool;
   }
-  const count = failureCount(normalized.description);
-  const windowSeconds = timeWindowSeconds(normalized.description);
-  return count >= 30 && windowSeconds !== null && windowSeconds <= 180;
+  const windowSeconds = timeWindowSeconds(description);
+  const rapidBurst = count >= 30 && windowSeconds !== null && windowSeconds <= 180;
+  const systematicGuess = count >= 30 && /한\s*글자씩\s*바꿔/u.test(description);
+  const repeatedSameAccount = count >= 50 && /같은\s*계정|한\s*계정/u.test(description);
+  const largeNoSuccess = count >= 80 && /성공은\s*없습니다/u.test(description);
+  return rapidBurst || systematicGuess || repeatedSameAccount || largeNoSuccess;
 }
 
 async function askJev(normalized, pattern) {

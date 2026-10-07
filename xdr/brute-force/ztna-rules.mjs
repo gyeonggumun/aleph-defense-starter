@@ -72,16 +72,23 @@ export async function logNonRecordOutcome({ alertId, normalized, action, confide
       || !PATTERNS.has(patternName)) return;
   let existing = '';
   try { existing = await readFile(alertLogPath, 'utf8'); } catch {}
-  const duplicate = existing.split(/\r?\n/u).some(line => {
-    try { return JSON.parse(line)?.alertId === alertId; } catch { return false; }
-  });
-  if (duplicate) return;
-  await appendFile(alertLogPath, `${JSON.stringify({
+  const entry = JSON.stringify({
     alertId,
     timestamp: normalized.timestamp,
     action,
     sourceAddress: normalized.sourceAddress,
     pattern: patternName,
     confidence,
-  })}\n`, 'utf8');
+  });
+  let replaced = false;
+  const lines = existing.split(/\r?\n/u).filter(Boolean).flatMap(line => {
+    try {
+      if (JSON.parse(line)?.alertId !== alertId) return [line];
+      if (replaced) return [];
+      replaced = true;
+      return [entry];
+    } catch { return [line]; }
+  });
+  if (replaced) await writeFile(alertLogPath, `${lines.join('\n')}\n`, 'utf8');
+  else await appendFile(alertLogPath, `${entry}\n`, 'utf8');
 }
