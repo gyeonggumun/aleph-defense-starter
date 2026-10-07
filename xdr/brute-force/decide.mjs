@@ -103,12 +103,20 @@ export async function decide(alert) {
 
   const alertId = typeof alert?.id === 'string' ? alert.id : alertIdFor(alert);
   if (result.action === 'block') {
-    await addTemporaryDenyRule({ alertId, sourceAddress: normalized.sourceAddress,
-      confidence: result.confidence, patternName: result.reason });
+    try {
+      await addTemporaryDenyRule({ alertId, sourceAddress: normalized.sourceAddress,
+        confidence: result.confidence, patternName: result.reason });
+    } catch {
+      // Persistence failure must not downgrade a clear attack to a non-block decision.
+    }
   }
   if (result.action !== 'record') {
-    await logNonRecordOutcome({ alertId, normalized, action: result.action,
-      confidence: result.confidence, patternName: result.reason });
+    try {
+      await logNonRecordOutcome({ alertId, normalized, action: result.action,
+        confidence: result.confidence, patternName: result.reason });
+    } catch {
+      // Keep the classification available when the local alert log is unavailable.
+    }
   }
   return result;
 }

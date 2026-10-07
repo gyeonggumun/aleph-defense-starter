@@ -9,7 +9,7 @@ const RULE_ID = 'xdr.brute_force_source_ip';
 const PATTERNS = new Set(['rapid_same_source_failures', 'password_spraying_across_accounts']);
 const ALERT_ID = /^[a-z0-9._-]{1,80}$/iu;
 const RULES_SCHEMA = 'aleph.xdr.brute-force-deny.v1';
-const TTL_MS = 15 * 60 * 1000;
+const TTL_MS = 24 * 60 * 60 * 1000;
 
 async function readStore() {
   let content;
