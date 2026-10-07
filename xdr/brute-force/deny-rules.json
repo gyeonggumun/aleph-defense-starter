@@ -7,8 +7,8 @@
       "evidenceAlertId": "bf-01",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.151Z",
-      "expiresAt": "2026-10-08T08:40:20.151Z"
+      "createdAt": "2026-10-07T08:47:21.958Z",
+      "expiresAt": "2026-10-08T08:47:21.958Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -16,8 +16,8 @@
       "evidenceAlertId": "bf-02",
       "reason": "password_spraying_across_accounts",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.159Z",
-      "expiresAt": "2026-10-08T08:40:20.159Z"
+      "createdAt": "2026-10-07T08:47:21.977Z",
+      "expiresAt": "2026-10-08T08:47:21.977Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -25,8 +25,8 @@
       "evidenceAlertId": "bf-03",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.164Z",
-      "expiresAt": "2026-10-08T08:40:20.164Z"
+      "createdAt": "2026-10-07T08:47:21.990Z",
+      "expiresAt": "2026-10-08T08:47:21.990Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -34,8 +34,8 @@
       "evidenceAlertId": "bf-04",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.171Z",
-      "expiresAt": "2026-10-08T08:40:20.171Z"
+      "createdAt": "2026-10-07T08:47:22.003Z",
+      "expiresAt": "2026-10-08T08:47:22.003Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -43,8 +43,8 @@
       "evidenceAlertId": "bf-05",
       "reason": "password_spraying_across_accounts",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.176Z",
-      "expiresAt": "2026-10-08T08:40:20.176Z"
+      "createdAt": "2026-10-07T08:47:22.016Z",
+      "expiresAt": "2026-10-08T08:47:22.016Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -52,8 +52,8 @@
       "evidenceAlertId": "bf-06",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.181Z",
-      "expiresAt": "2026-10-08T08:40:20.181Z"
+      "createdAt": "2026-10-07T08:47:22.029Z",
+      "expiresAt": "2026-10-08T08:47:22.029Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -61,8 +61,8 @@
       "evidenceAlertId": "bf-07",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.186Z",
-      "expiresAt": "2026-10-08T08:40:20.186Z"
+      "createdAt": "2026-10-07T08:47:22.043Z",
+      "expiresAt": "2026-10-08T08:47:22.043Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -70,8 +70,8 @@
       "evidenceAlertId": "bf-08",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.192Z",
-      "expiresAt": "2026-10-08T08:40:20.192Z"
+      "createdAt": "2026-10-07T08:47:22.055Z",
+      "expiresAt": "2026-10-08T08:47:22.055Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -79,8 +79,8 @@
       "evidenceAlertId": "bf-09",
       "reason": "password_spraying_across_accounts",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.197Z",
-      "expiresAt": "2026-10-08T08:40:20.197Z"
+      "createdAt": "2026-10-07T08:47:22.067Z",
+      "expiresAt": "2026-10-08T08:47:22.067Z"
     },
     {
       "ruleId": "xdr.brute_force_source_ip",
@@ -88,8 +88,8 @@
       "evidenceAlertId": "bf-10",
       "reason": "rapid_same_source_failures",
       "confidence": 0.96,
-      "createdAt": "2026-10-07T08:40:20.203Z",
-      "expiresAt": "2026-10-08T08:40:20.203Z"
+      "createdAt": "2026-10-07T08:47:22.079Z",
+      "expiresAt": "2026-10-08T08:47:22.079Z"
     }
   ]
 }
