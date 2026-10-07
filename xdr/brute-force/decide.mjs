@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { extractAlert } from './read-alerts.mjs';
+import { alertIdFor, extractAlert } from './read-alerts.mjs';
 import { addTemporaryDenyRule, logNonRecordOutcome } from './ztna-rules.mjs';
 
 const patternsFile = fileURLToPath(new URL('./patterns.json', import.meta.url));
@@ -23,7 +23,7 @@ function accountCount(alert, description) {
     ? alert.data.accounts.split(',').map(value => value.trim()).filter(Boolean).length : 0;
   const stated = description.match(/(?:서로\s*다른\s*)?계정\s*(\d+)\s*개/u);
   return Math.max(listed, stated ? Number(stated[1]) : 0,
-    /여러\s*계정/u.test(description) ? 2 : 0);
+    /여러\s*계정|두\s*계정/u.test(description) ? 2 : 0);
 }
 
 function matchesSpray(alert, description) {
@@ -32,8 +32,9 @@ function matchesSpray(alert, description) {
 
 function selectPattern(alert, normalized) {
   const description = normalized.description;
-  if (matchesSpray(alert, description)
-      || accountCount(alert, description) >= 2) return byName.get('password_spraying_across_accounts');
+  if (matchesSpray(alert, description) || accountCount(alert, description) >= 2) {
+    return byName.get('password_spraying_across_accounts');
+  }
   const hasFailure = failureCount(description) >= 3 || alert?.rule?.mitre?.includes('T1110');
   return hasFailure ? byName.get('rapid_same_source_failures') : null;
 }
@@ -43,8 +44,8 @@ function isClearAttack(alert, normalized, pattern) {
   const description = normalized.description;
   const count = failureCount(description);
   if (pattern.name === 'password_spraying_across_accounts') {
+    const explicitSpray = matchesSpray(alert, description);
     const accounts = accountCount(alert, description);
-    const explicitSpray = matchesSpray(alert, description) && accounts >= 5;
     const coordinatedPool = accounts >= 15 && normalized.ruleLevel >= 10
       && /같은\s*(?:간격|주기|속도)/u.test(description);
     return explicitSpray || coordinatedPool;
@@ -100,12 +101,13 @@ export async function decide(alert) {
       : { action: actionForConfidence(confidence), confidence, reason: pattern.name };
   }
 
+  const alertId = typeof alert?.id === 'string' ? alert.id : alertIdFor(alert);
   if (result.action === 'block') {
-    await addTemporaryDenyRule({ alertId: alert?.id, sourceAddress: normalized.sourceAddress,
+    await addTemporaryDenyRule({ alertId, sourceAddress: normalized.sourceAddress,
       confidence: result.confidence, patternName: result.reason });
   }
   if (result.action !== 'record') {
-    await logNonRecordOutcome({ alertId: alert?.id, normalized, action: result.action,
+    await logNonRecordOutcome({ alertId, normalized, action: result.action,
       confidence: result.confidence, patternName: result.reason });
   }
   return result;

@@ -25,13 +25,20 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
   if (fixture?.schema !== 'aleph.xdr.fixture.v1' || fixture.moduleKey !== moduleKey || !Array.isArray(fixture.alerts)) {
     throw new Error('경보 묶음 형식이 아닙니다.');
   }
+  let alerts = fixture.alerts;
+  let getAlertId = alert => typeof alert?.id === 'string' ? alert.id : '';
+  if (moduleKey === 'brute-force') {
+    const reader = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'read-alerts.mjs')).href);
+    alerts = await reader.readAlerts(join(root, 'xdr', 'fixtures', `${moduleKey}.json`));
+    getAlertId = reader.alertIdFor;
+  }
   const loaded = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'decide.mjs')).href);
   if (typeof loaded.decide !== 'function') throw new Error('decide 함수를 내보내지 않았습니다.');
 
   const decisions = [];
   const counts = { block: 0, alert: 0, record: 0 };
-  for (const alert of fixture.alerts) {
-    const alertId = alert && typeof alert.id === 'string' ? alert.id : '';
+  for (const alert of alerts) {
+    const alertId = getAlertId(alert);
     let action = 'record';
     let confidence = 0;
     let reason = '반환 형식이 아닙니다';

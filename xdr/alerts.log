@@ -12,7 +12,7 @@
 {"alertId":"bf-12","timestamp":"2026-09-27T00:41:05.000Z","action":"alert","sourceAddress":"198.51.100.50","pattern":"rapid_same_source_failures","confidence":0.65}
 {"alertId":"bf-13","timestamp":"2026-09-27T01:02:20.000Z","action":"alert","sourceAddress":"203.0.113.50","pattern":"rapid_same_source_failures","confidence":0.65}
 {"alertId":"bf-14","timestamp":"2026-09-27T01:15:08.000Z","action":"alert","sourceAddress":"192.0.2.51","pattern":"rapid_same_source_failures","confidence":0.65}
-{"alertId":"bf-15","timestamp":"2026-09-27T01:28:44.000Z","action":"alert","sourceAddress":"198.51.100.51","pattern":"rapid_same_source_failures","confidence":0.65}
+{"alertId":"bf-15","timestamp":"2026-09-27T01:28:44.000Z","action":"alert","sourceAddress":"198.51.100.51","pattern":"password_spraying_across_accounts","confidence":0.65}
 {"alertId":"bf-16","timestamp":"2026-09-27T02:18:03.000Z","action":"alert","sourceAddress":"203.0.113.51","pattern":"rapid_same_source_failures","confidence":0.65}
 {"alertId":"bf-17","timestamp":"2026-09-27T04:02:16.000Z","action":"alert","sourceAddress":"192.0.2.52","pattern":"rapid_same_source_failures","confidence":0.65}
 {"alertId":"bf-18","timestamp":"2026-09-27T05:05:27.000Z","action":"alert","sourceAddress":"198.51.100.52","pattern":"rapid_same_source_failures","confidence":0.65}

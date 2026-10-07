@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { extractAlert, readAlerts } from '../xdr/brute-force/read-alerts.mjs';
+import { alertIdFor, extractAlert, readAlerts } from '../xdr/brute-force/read-alerts.mjs';
 import { findActiveDenyRule } from '../xdr/brute-force/ztna-rules.mjs';
 
 test('Wazuh reader returns one redacted, allowlisted row per fixture alert', async () => {
@@ -11,6 +11,8 @@ test('Wazuh reader returns one redacted, allowlisted row per fixture alert', asy
   assert.ok(alerts.every(alert => Object.keys(alert).join(',')
     === 'timestamp,sourceAddress,account,ruleLevel,description'));
   assert.equal(alerts[0].sourceAddress, '203.0.113.10');
+  assert.deepEqual(extractAlert(alerts[0]), alerts[0]);
+  assert.equal(alertIdFor(alerts[0]), fixture.alerts[0].id);
 
   const sanitized = extractAlert({ timestamp: '2026-10-07T00:00:00Z',
     data: { srcip: '203.0.113.20', srcuser: 'user01' },

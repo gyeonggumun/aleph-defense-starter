@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const fixturePath = fileURLToPath(new URL('../fixtures/brute-force.json', import.meta.url));
+const alertIds = new WeakMap();
 const sensitivePatterns = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
   /\b(?:password|passwd|pwd|secret|token|api[_ -]?key|authorization)\b\s*[:=]\s*["']?[^\s,"';]+/giu,
@@ -18,17 +19,24 @@ function safeText(value, maxLength) {
 }
 
 export function extractAlert(alert) {
-  const address = typeof alert?.data?.srcip === 'string' && isIP(alert.data.srcip) ? alert.data.srcip : '';
+  const sourceAddress = alert?.data?.srcip ?? alert?.sourceAddress;
+  const description = alert?.rule?.description ?? alert?.description;
+  const account = alert?.data?.srcuser ?? alert?.account;
+  const address = typeof sourceAddress === 'string' && isIP(sourceAddress) ? sourceAddress : '';
   const timestamp = typeof alert?.timestamp === 'string' && Number.isFinite(Date.parse(alert.timestamp))
     ? new Date(alert.timestamp).toISOString() : '';
-  const level = Number(alert?.rule?.level);
+  const level = Number(alert?.rule?.level ?? alert?.ruleLevel);
   return {
     timestamp,
     sourceAddress: address,
-    account: safeText(alert?.data?.srcuser, 80),
+    account: safeText(account, 80),
     ruleLevel: Number.isInteger(level) && level >= 0 ? level : null,
-    description: safeText(alert?.rule?.description, 300),
+    description: safeText(description, 300),
   };
+}
+
+export function alertIdFor(alert) {
+  return alertIds.get(alert) ?? '';
 }
 
 export async function readAlerts(path = fixturePath) {
@@ -37,7 +45,11 @@ export async function readAlerts(path = fixturePath) {
       || !Array.isArray(fixture.alerts)) {
     throw new Error('무차별 대입 경보 묶음 형식이 아닙니다.');
   }
-  return fixture.alerts.map(extractAlert);
+  return fixture.alerts.map(alert => {
+    const normalized = extractAlert(alert);
+    if (typeof alert?.id === 'string') alertIds.set(normalized, alert.id);
+    return normalized;
+  });
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];

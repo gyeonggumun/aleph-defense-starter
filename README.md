@@ -75,7 +75,7 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 `xdr/brute-force/read-alerts.mjs`는 `xdr/fixtures/brute-force.json`에서 시각·출발 주소·계정·Wazuh 규칙 수준·설명만 추려 비밀값처럼 보이는 문자열을 가립니다. `patterns.json`은 MITRE ATT&CK T1110에 근거한 같은 주소의 반복 실패와 여러 계정 대상 비밀번호 대입 두 신호만 정의합니다.
 
-`npm run xdr:run -- brute-force`로 시험합니다. 실행 결과는 `xdr/brute-force/result.json`, 일시 차단 규칙은 `xdr/brute-force/deny-rules.json`, 알림 기록은 `xdr/alerts.log`에 씁니다. 차단 규칙은 확신도 0.85 이상일 때만 추가하고 15분 뒤 만료되며 근거 경보 번호를 포함합니다. 반복 실행은 같은 경보의 로그·규칙을 중복 추가하지 않습니다. 현재 명확한 차단 조건은 같은 주소에서 30회 이상 실패가 3분 이내 발생, 한 글자씩 바꾼 비밀번호 시도가 30회 이상, 같은 계정 실패가 50회 이상, 성공 없이 실패 80회 이상, 같은 간격으로 15개 이상 계정에 시도된 규칙 수준 10 이상 경보, 또는 같은 비밀번호를 5개 이상 계정에 시도한 경우입니다.
+`npm run xdr:run -- brute-force`로 시험합니다. 실행 결과는 `xdr/brute-force/result.json`, 일시 차단 규칙은 `xdr/brute-force/deny-rules.json`, 알림 기록은 `xdr/alerts.log`에 씁니다. 차단 규칙은 확신도 0.85 이상일 때만 추가하고 15분 뒤 만료되며 근거 경보 번호를 포함합니다. 반복 실행은 같은 경보의 로그·규칙을 중복 추가하지 않습니다. `decide()`는 원본 경보와 읽기 모듈의 정규화 경보 모두 처리하며, 정규화 출력의 다섯 필드에는 경보 ID를 추가하지 않습니다. 현재 명확한 차단 조건은 같은 주소에서 30회 이상 실패가 3분 이내 발생, 한 글자씩 바꾼 비밀번호 시도가 30회 이상, 같은 계정 실패가 50회 이상, 성공 없이 실패 80회 이상, 같은 간격으로 15개 이상 계정에 시도된 규칙 수준 10 이상 경보, 또는 같은 비밀번호를 2개 이상 계정에 시도한 경우입니다.
 
 `src/decider.mjs`는 기존 `starter.deny`를 그대로 적용하고, 확인된 `request.signals.source`가 유효한 출발 IP이며 일시 차단 규칙과 일치할 때 `xdr.brute_force_source_ip`를 추가로 표시합니다. 현재 운영 판정 요청의 `signals.source`는 `none`이므로, 운영에서 실제 IP 차단을 하려면 신뢰된 출발 주소를 판정 요청 계약에 전달하는 별도 운영 측 연결이 필요합니다. 이 저장소의 fixture 실행은 운영 트래픽 차단을 증명하지 않습니다.
 

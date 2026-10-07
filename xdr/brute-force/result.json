@@ -90,7 +90,7 @@
       "alertId": "bf-15",
       "action": "alert",
       "confidence": 0.65,
-      "reason": "rapid_same_source_failures"
+      "reason": "password_spraying_across_accounts"
     },
     {
       "alertId": "bf-16",
