@@ -1,0 +1,16 @@
+{
+  "schema": "aleph.xdr.patterns.v1",
+  "source": "MITRE ATT&CK T1110",
+  "patterns": [
+    {
+      "name": "rapid_same_source_failures",
+      "condition": "같은 출발 주소에서 짧은 시간 동안 로그인 실패가 반복됩니다.",
+      "evidence": "MITRE ATT&CK T1110은 반복적으로 비밀번호를 추측하는 무차별 대입과 과도한 인증 실패 탐지를 설명합니다. https://attack.mitre.org/techniques/T1110/"
+    },
+    {
+      "name": "password_spraying_across_accounts",
+      "condition": "같은 출발 주소가 같은 비밀번호를 짧은 시간에 여러 계정에 시도합니다.",
+      "evidence": "MITRE ATT&CK T1110에는 여러 사용자 계정에 비밀번호를 시도하는 Password Spraying 하위 기법과 사용자 집단 대상 탐지가 있습니다. https://attack.mitre.org/techniques/T1110/"
+    }
+  ]
+}

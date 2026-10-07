@@ -71,6 +71,18 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 4. 공개 anon key로 원본 `originalApiUrl`을 요청해 행이 반환되지 않는지 심판과 직접 확인합니다.
 5. `/aleph.json`의 허용 경로, 첫 화면 보안 헤더, 공개 `data.json`의 빈 `notes`를 번들 점검합니다.
 
+## 보너스 XDR: 무차별 로그인 공격 경보
+
+`xdr/brute-force/read-alerts.mjs`는 `xdr/fixtures/brute-force.json`에서 시각·출발 주소·계정·Wazuh 규칙 수준·설명만 추려 비밀값처럼 보이는 문자열을 가립니다. `patterns.json`은 MITRE ATT&CK T1110에 근거한 같은 주소의 반복 실패와 여러 계정 대상 비밀번호 대입 두 신호만 정의합니다.
+
+`npm run xdr:run -- brute-force`로 시험합니다. 실행 결과는 `xdr/brute-force/result.json`, 일시 차단 규칙은 `xdr/brute-force/deny-rules.json`, 알림 기록은 `xdr/alerts.log`에 씁니다. 차단 규칙은 확신도 0.85 이상일 때만 추가하고 15분 뒤 만료되며 근거 경보 번호를 포함합니다. 반복 실행은 같은 경보의 로그·규칙을 중복 추가하지 않습니다.
+
+`src/decider.mjs`는 기존 `starter.deny`를 그대로 적용하고, 확인된 `request.signals.source`가 유효한 출발 IP이며 일시 차단 규칙과 일치할 때 `xdr.brute_force_source_ip`를 추가로 표시합니다. 현재 운영 판정 요청의 `signals.source`는 `none`이므로, 운영에서 실제 IP 차단을 하려면 신뢰된 출발 주소를 판정 요청 계약에 전달하는 별도 운영 측 연결이 필요합니다. 이 저장소의 fixture 실행은 운영 트래픽 차단을 증명하지 않습니다.
+
+애매한 경보에만 `globalThis.Jev.reviewBruteForceAlert({ alert, pattern })` 어댑터를 호출합니다. 이 실행 환경에 Jev 응답자가 없거나 1.5초 안에 응답하지 않으면 `alert`로 남기며, 어댑터에는 정제된 다섯 필드만 전달합니다. 실행 명령은 네트워크를 사용하지 않습니다.
+
+확인 명령은 `node xdr/brute-force/read-alerts.mjs`와 `npm run xdr:run -- brute-force`입니다. 첫 명령의 출력 줄 수가 경보 수와 같아야 하며, 두 번째 결과에서 block·alert·record를 확인하고 정상 경보가 block되지 않는지 봅니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 5단계부터는 쿼리·인증 정보가 없는 HTTPS `originalApiUrl`도 함께 기록합니다. 필수 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
