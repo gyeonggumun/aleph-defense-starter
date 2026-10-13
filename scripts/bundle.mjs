@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -99,20 +99,10 @@ try {
       || new Set(requestEvidence.map(item => item.attackId)).size !== requestEvidence.length) {
     fail('공격 점검 요청 기록과 제출 묶음 항목이 일치하지 않습니다.');
   }
-  const evidenceById = new Map(requestEvidence.map(item => [item.attackId, item]));
   const checkedAt = new Date().toISOString();
-  const operationsReport = {
-    schema: 'aleph.stage12.checks.v1', step: config.step, commit, checkedAt,
-    total: attackAttempts.length,
-    blocked: attackAttempts.filter(item => item.result === 'blocked').length,
-    failed: attackAttempts.filter(item => item.result === 'breached').length,
-    notRun: attackAttempts.filter(item => item.observed === 'not_run').length,
-    attempts: attackAttempts.map(item => ({
-      ...item,
-      requestId: evidenceById.get(item.attackId)?.requestId ?? null,
-      checkedAt: evidenceById.get(item.attackId)?.checkedAt ?? null,
-    })),
-  };
+  const blocked = attackAttempts.filter(item => item.result === 'blocked').length;
+  const failed = attackAttempts.filter(item => item.result === 'breached').length;
+  const notRun = attackAttempts.filter(item => item.observed === 'not_run').length;
   const bundle = {
     schema: 'aleph.defense.submission.v2', step: config.step, commit, repoUrl, checkedAt,
     changedFiles, policyRules,
@@ -121,13 +111,9 @@ try {
     originalApiUrl: config.originalApiUrl ?? null, restoreRoute: config.restoreRoute ?? null,
   };
   if (secretPattern.test(JSON.stringify(bundle))) fail('제출 묶음에 비밀값 또는 연락처로 보이는 내용이 있습니다.');
-  if (secretPattern.test(JSON.stringify(operationsReport))) fail('작전실 점검 기록에 비밀값 또는 연락처로 보이는 내용이 있습니다.');
-  mkdirSync(join(root, 'artifacts'), { recursive: true });
   const output = join(root, 'artifacts', 'submission.json');
   writeFileSync(output, `${JSON.stringify(bundle, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
-  const operationsOutput = join(root, 'artifacts', 'operations-report.json');
-  writeFileSync(operationsOutput, `${JSON.stringify(operationsReport, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
-  process.stdout.write(`제출 묶음 JSON 생성: ${output}\n작전실 실제 점검 기록 생성: ${operationsOutput}\n단계 ${bundle.step} · 커밋 ${commit.slice(0, 12)} · 바뀐 파일 ${changedFiles.length}개 · 규칙 ${policyRules.length}개 · 직접 점검 ${attackAttempts.length}개 (막음 ${operationsReport.blocked} · 뚫림 ${operationsReport.failed} · 미실행 ${operationsReport.notRun})\n`);
+  process.stdout.write(`제출 묶음 JSON 생성: ${output}\n단계 ${bundle.step} · 커밋 ${commit.slice(0, 12)} · 바뀐 파일 ${changedFiles.length}개 · 규칙 ${policyRules.length}개 · 직접 점검 ${attackAttempts.length}개 (막음 ${blocked} · 뚫림 ${failed} · 미실행 ${notRun})\n`);
 } catch (error) {
   process.stderr.write(`제출 묶음 생성 중 첫 오류: ${error.message}\n`);
   process.exitCode = 1;
