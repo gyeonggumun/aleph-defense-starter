@@ -7,7 +7,7 @@ import { handleNoticesRequest } from '../src/notices-api.mjs';
 
 const id = '23e19e6c-6223-4d86-a635-8c28a5e1e786';
 const request = (method, path, route) => ({ schema: 'aleph.decision.v1', requestId: randomUUID(),
-  classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'learner_fixture',
+  classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'verified-subject',
   deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', deviceRegistered: true,
   method, path, route, queryLength: 0,
   signals: { source: 'none' }, recentEvents: [], stepUp: { verified: false, authAgeSeconds: null } });
@@ -18,14 +18,15 @@ test('배정된 메모만 허용하고 다른 주체·자원·공지 수정을 �
   assert.equal(resourceZone(own).id, `note:${id}`);
   assert.equal(resourceZone(notice).id, `notice:${id}`);
   assert.equal((await decide(own)).decision, 'allow');
+  assert.equal((await decide({ ...own, subjectId: 'learner_fixture', path: '/notes/demo' })).decision, 'allow');
   assert.equal((await decide(notice)).decision, 'deny');
   assert.equal((await decide(request('GET', '/notices', 'GET /notices'))).decision, 'allow');
-  assert.equal((await decide({ ...own, subjectId: 'other_fixture' })).decision, 'deny');
+  assert.equal((await decide({ ...own, subjectId: 'learner_fixture' })).decision, 'deny');
   assert.equal((await decide({ ...own, deviceId: 'bbbbbbbbbbbbbbbb' })).decision, 'deny');
   assert.equal((await decide({ ...own, path: '/notes/23e19e6c-6223-4d86-a635-8c28a5e1e787' })).decision, 'deny');
   assert.equal((await decide({ ...notice, role: 'instructor' })).decision, 'deny');
   assert.equal((await decide({ ...own, queryLength: 8 })).decision, 'deny');
-  for (const bad of ['/notes/export', '/notes/export/now', '/notes/demo', `/notes/${id}/export`, `/notes/${id}?export=1`]) {
+  for (const bad of ['/notes/export', '/notes/export/now', '/notes/unassigned', `/notes/${id}/export`, `/notes/${id}?export=1`]) {
     assert.equal((await decide(request('GET', bad, 'GET /notes/:id'))).decision, 'deny');
   }
   assert.equal((await decide({ ...own, deviceRegistered: false })).reasonCode, 'device_not_registered');

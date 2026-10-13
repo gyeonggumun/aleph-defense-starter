@@ -4,11 +4,13 @@
 
 export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice']);
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
-const PRACTICE_BINDINGS = ['23e19e6c-6223-4d86-a635-8c28a5e1e786'].map(id => ({
-  classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'learner_fixture',
-  deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
-  resourceId: `note:${id}`, ownerSubjectId: 'learner_fixture', permissions: ['GET', 'PUT'],
+const ITEM = /^[a-zA-Z0-9_-]{1,128}$/u;
+const PRACTICE_BINDINGS = [
+  ['23e19e6c-6223-4d86-a635-8c28a5e1e786', 'verified-subject'],
+  ['demo', 'learner_fixture'],
+].map(([id, subjectId]) => ({
+  subjectId, deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
+  resourceId: `note:${id}`, ownerSubjectId: subjectId, permissions: ['GET', 'PUT'],
 }));
 
 function resourceBindings() {
@@ -28,9 +30,11 @@ function resourceAllowed(request, resource) {
   // Collection reads are filtered by owner in the API; notices are readable by students.
   if (resource.zone === 'own_notes' || request.method === 'GET'
       && resource.zone === 'instructor_notice') return true;
-  return resourceBindings().some(entry => entry?.classId === request.classId
-    && entry.projectId === request.projectId && entry.subjectId === request.subjectId
-    && entry.deviceId === request.deviceId && entry.service === request.service
+  return resourceBindings().some(entry => entry?.subjectId === request.subjectId
+    && (entry.classId === undefined || entry.classId === request.classId)
+    && (entry.projectId === undefined || entry.projectId === request.projectId)
+    && (entry.deviceId === undefined || entry.deviceId === request.deviceId)
+    && entry.service === request.service
     && entry.path === request.path && entry.resourceId === resource.id
     && Array.isArray(entry.permissions) && entry.permissions.includes(request.method)
     && (resource.zone !== 'own_note' || entry.ownerSubjectId === request.subjectId)
@@ -51,7 +55,7 @@ export function resourceZone(request) {
     return { id: 'notices:collection', zone: 'instructor_notice' };
   }
   const segments = request.path.split('/');
-  if (segments.length !== 3 || segments[0] !== '' || !UUID.test(segments[2])) return null;
+  if (segments.length !== 3 || segments[0] !== '' || !ITEM.test(segments[2])) return null;
   const id = segments[2];
   if (id.toLowerCase() === 'export') return null;
   if (segments[1] === 'notes' && ['GET', 'PUT'].includes(request.method)
