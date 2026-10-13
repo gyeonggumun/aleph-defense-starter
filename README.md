@@ -231,6 +231,18 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 
 2026-10-13 실행 결과: 원본 24건과 읽기 출력 24줄이 일치했고 block 8 · alert 8 · record 8입니다. 로컬 판정기에 재전송하여 명확한 8건 거부와 나머지 16건 허용을 확인했으며 정상 이벤트 오차단은 0건입니다. 관련 테스트 15개가 통과했습니다. 원본 경보·기존 두 모듈의 거부 규칙·기존 감사 로그 내용은 보존했습니다.
 
+## 보너스 xdr-04 저장점 · 몰래 심어진 프로그램 탐지
+
+`xdr/persistence/read-alerts.mjs`는 원본을 바꾸지 않고 시각·출발 주소·가상 계정·규칙 수준·가린 설명 다섯 항목만 출력합니다. `node xdr/persistence/read-alerts.mjs`로 확인하며 원본 24건과 출력 24줄이 일치합니다. 판단 모듈은 이 읽기 모듈을 불러오지 않습니다.
+
+`patterns.json`의 서비스 생성·변경은 MITRE ATT&CK T1543, 예약 작업은 T1053, 시작 폴더는 T1547.001에 근거합니다. `decide.mjs` 맨 위 상수와 JSON의 패턴은 동일합니다. 이 파일은 import·파일 접근·외부 질의 없이 `decide(alert)`만 내보내고 확신도 0.85 이상 block, 0.5 이상 alert, 나머지 record를 반환합니다. 경보 ID·규칙 수준만으로 판단하지 않습니다. 서명 정보 미확인은 서명 부재와 구별하며 낯선 자동 실행 항목·임시 경로·실제 변경 등 근거가 겹친 경우만 격리 후보가 됩니다.
+
+`respond.mjs`는 판단을 다시 확인한 block만 근거 경보 ID와 처리 시각부터 24시간의 만료 시각이 있는 `deny-rules.json`에 저장합니다. 애매한 시도는 격리하지 않고 알림만 남깁니다. `xdr/alerts.log`에는 가린 메타데이터를 한 줄씩 추가하여 이전 감사 이력을 보존합니다. 기존 판정 규칙을 유지하고 `xdr.persistence_source_ip` 규칙을 추가했습니다. 로컬 IP 시험은 엔진의 현재 `signals.source=none/judge_fixture` 계약과 별개이며 실제 운영 기기 격리를 완료했다고 주장하지 않습니다.
+
+실행 명령은 `npm run xdr:run -- persistence`입니다. `xdr/persistence/result.json`을 갱신하고 block·alert만 알림 기록에 남깁니다. 다시 실행해도 차단 규칙은 중복되지 않으며 감사 기록은 새 실행 이력으로 추가됩니다. 시험은 `node --test test/xdr-persistence.test.mjs test/xdr-run.test.mjs test/decider-isolated.test.mjs`로 재현합니다.
+
+2026-10-13 두 차례 점검: 원본 24건 유지, block 8 · alert 8 · record 8, 로컬 판정기에 재전송한 명확한 공격 8건 거부·나머지 16건 허용·정상 오차단 0건입니다. 단독 파일·빈 VM·패턴 대조·비밀값 가림·위조 후보 거부·만료·재실행·기존 규칙 계약 시험 13개가 통과했습니다. 임시 폴더의 파일 이름 변경을 막는 샌드박스 제한으로 실패한 두 시험은 같은 명령을 권한이 있는 환경에서 재실행해 확인했습니다. 이 수치는 합성 경보와 로컬 실행 결과이며 심판 최종 판정은 재제출 후 확인합니다.
+
 ## 12단계 점검 기록 재현
 
 학생 작업은 판정기 `src/decider.mjs`, 탐지 규칙 `src/detect.mjs`, 접속 화면 `public/index.html`, 자료 API `api/`, 복구 검증 `scripts/recover-policy.mjs`입니다. 제공 엔진의 출처는 ALEPH SDP 엔진입니다. 아래 합성 입력 시험은 학생 코드의 실행 결과이며 엔진의 실제 접속 집행·권한 회수·백업 복원을 대신하지 않습니다.

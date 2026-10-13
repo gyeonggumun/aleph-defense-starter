@@ -51,3 +51,5 @@ node scripts/xdr-run.mjs brute-force
 - `xdr/alerts.log` 기록과 판정기 연결은 `respond.mjs` 같은 다른 파일에서 합니다. `decide.mjs` 는 판단 결과만 돌려줍니다.
 
 인터넷을 끈 상태에서 `npm run xdr:run -- <moduleKey>` 를 돌려도 같은 결과가 나오면 심판에서도 같은 결과가 나옵니다.
+
+지속성 경보는 `npm run xdr:run -- persistence`로 실행합니다. `persistence/decide.mjs`의 판단 뒤 `persistence/respond.mjs`가 확인된 block만 24시간의 만료·근거 경보 ID가 있는 임시 규칙으로 연결하고 block·alert를 기존 `alerts.log` 끝에 추가합니다. 정상 이벤트는 격리하지 않습니다. `src/decider.mjs`의 `xdr.persistence_source_ip` 연결은 로컬 IP 경보 시험이며 ALEPH SDP 운영 엔진의 실제 기기 격리와 구별합니다.

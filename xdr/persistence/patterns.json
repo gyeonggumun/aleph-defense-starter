@@ -1,0 +1,21 @@
+{
+  "schema": "aleph.xdr.patterns.v1",
+  "source": "MITRE ATT&CK T1543 · T1053 · T1547.001",
+  "patterns": [
+    {
+      "name": "untrusted_service_change",
+      "condition": "서명 없는 서비스 생성·실행 파일 변경, 또는 평소 목록에 없는 서비스의 임시 실행 파일·재시작 지속성이 함께 확인됩니다.",
+      "evidence": "MITRE ATT&CK T1543은 지속 실행을 위한 시스템 서비스 생성·변경을 설명합니다. 임시 경로·서명 부재의 조합은 이 모듈의 보수적 격리 기준입니다. https://attack.mitre.org/techniques/T1543/"
+    },
+    {
+      "name": "unfamiliar_scheduled_task",
+      "condition": "낯선·임의 이름의 예약 작업이 임시 실행 파일을 가리키거나 시작 프로그램과 같은 임시 파일을 함께 실행합니다.",
+      "evidence": "MITRE ATT&CK T1053은 악성 코드의 반복 실행을 위한 예약 작업 악용을 설명합니다. https://attack.mitre.org/techniques/T1053/"
+    },
+    {
+      "name": "unfamiliar_startup_entry",
+      "condition": "평소 목록에 없는 실행 파일이 시작 폴더에 추가됐거나 다른 자동 실행 경로와 같은 임시 파일을 가리킵니다.",
+      "evidence": "MITRE ATT&CK T1547.001은 부팅·로그온 시 실행되는 시작 폴더 항목을 통한 지속성을 설명합니다. https://attack.mitre.org/techniques/T1547/001/"
+    }
+  ]
+}

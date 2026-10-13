@@ -1,0 +1,77 @@
+{
+  "schema": "aleph.xdr.persistence-deny.v1",
+  "rules": [
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "203.0.113.12",
+      "evidenceAlertId": "ps-01",
+      "reason": "untrusted_service_change",
+      "confidence": 0.97,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "203.0.113.12",
+      "evidenceAlertId": "ps-02",
+      "reason": "unfamiliar_scheduled_task",
+      "confidence": 0.96,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "198.51.100.12",
+      "evidenceAlertId": "ps-03",
+      "reason": "unfamiliar_startup_entry",
+      "confidence": 0.95,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "192.0.2.12",
+      "evidenceAlertId": "ps-04",
+      "reason": "untrusted_service_change",
+      "confidence": 0.97,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "203.0.113.19",
+      "evidenceAlertId": "ps-05",
+      "reason": "unfamiliar_scheduled_task",
+      "confidence": 0.96,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "198.51.100.19",
+      "evidenceAlertId": "ps-06",
+      "reason": "untrusted_service_change",
+      "confidence": 0.97,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "192.0.2.19",
+      "evidenceAlertId": "ps-07",
+      "reason": "unfamiliar_scheduled_task",
+      "confidence": 0.96,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    },
+    {
+      "ruleId": "xdr.persistence_source_ip",
+      "sourceAddress": "203.0.113.33",
+      "evidenceAlertId": "ps-08",
+      "reason": "untrusted_service_change",
+      "confidence": 0.97,
+      "createdAt": "2026-10-13T11:50:51.197Z",
+      "expiresAt": "2026-10-14T11:50:51.197Z"
+    }
+  ]
+}
