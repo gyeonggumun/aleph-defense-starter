@@ -17,8 +17,12 @@ const cases = [
   { name: '10분 안에 120건', events: reads(120), expected: { action: 'observe' } },
   { name: '10분 안에 121건', events: reads(121), expected: {
     action: 'propose_revocation', reasonCode: 'burst_read', subject } },
+  { name: '순서가 뒤섞인 121건', events: reads(121).reverse(), expected: {
+    action: 'propose_revocation', reasonCode: 'burst_read', subject } },
   { name: '폭주 조회 200건', events: reads(200), expected: {
     action: 'propose_revocation', reasonCode: 'burst_read', subject } },
+  { name: 'GET 120건과 다른 동작 30건', events: [...reads(120),
+    ...reads(30).map(event => ({ ...event, method: 'POST' }))], expected: { action: 'observe' } },
   { name: '서로 다른 사용자 각 100건', events: [...reads(100),
     ...reads(100, { owner: 'other_fixture' })].sort((a, b) => a.at.localeCompare(b.at)),
   expected: { action: 'observe' } },

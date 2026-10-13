@@ -125,6 +125,14 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 로컬 확인은 `node --test test/stage8.test.mjs`, `npm run decider:test`, `npm run fixture:7` 순서로 수행합니다. 이 시험은 가상 요청이며 실제 A/B 계정의 UI 접근이나 운영 판정기를 증명하지 않습니다. 변경 저장점 뒤 `npm run bundle`로 제출 JSON을 생성합니다.
 
+## 9단계 저장점 · 가상 조회 폭주 탐지
+
+`src/detect.mjs`의 `detect(events)`는 엔진이 검증해 전달한 사건에서 시각(`at`), 요청 종류(`method`), 가명 사용자(`identity.sub`)만 읽습니다. 같은 사용자의 `GET`이 어느 10분 구간에서든 120건을 넘으면 별도 탐지 결과 `{ action: 'propose_revocation', reasonCode: 'burst_read', subject }`를 반환하고, 그 밖에는 `{ action: 'observe' }`를 반환합니다. 서로 다른 사용자의 사건을 합산하지 않으며, 메모 본문·토큰·실명은 읽거나 기록하지 않습니다. 기존 `decide(request)`의 허용·거부 응답과 자료 API는 바꾸지 않습니다.
+
+현재 `docs/DETECT_EVENTS.md` 계약에는 검증된 기기 ID·네트워크·기존 판정이 없습니다. 따라서 네트워크 이상과 특정 기기 한 대의 회수 대상은 이 입력으로 확인할 수 없습니다. 탐지 결과는 가명 사용자에 대한 **제안**이며 실제 기기 권한 회수와 탐지부터 회수까지의 시간 측정은 운영 엔진·심판에서 미실행입니다. 정상 조회와 정확히 120건은 `observe`로 유지합니다.
+
+확인은 `npm run detect:test`로 정상·경계·폭주·사용자 분리·시간 구간을 시험합니다. 저장점 커밋 뒤 `npm run bundle`로 제출 묶음을 갱신합니다. 로컬 시험 통과를 실제 접속 회수나 심판 판정으로 간주하지 않습니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 5단계부터는 쿼리·인증 정보가 없는 HTTPS `originalApiUrl`도 함께 기록합니다. 필수 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
