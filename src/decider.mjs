@@ -1,11 +1,37 @@
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기 시작점입니다.
 // 엔진이 확인한 등록 기기의 자료실 읽기만 허용합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
-import { activeDenyRuleFor } from '../xdr/brute-force/ztna-rules.mjs';
-import { activeDenyRuleFor as webInjectionRuleFor } from '../xdr/web-injection/ztna-rules.mjs';
-import { resourceZone } from './resource-zone.mjs';
 
 export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice']);
+
+const ITEM = /^[a-zA-Z0-9_-]{1,128}$/u;
+
+// Engine-verified service, method, route, and exact path identify the zone.
+// The owner and instructor role are deliberately left to the authenticated API.
+export function resourceZone(request) {
+  if (request?.service !== 'notes' || typeof request.path !== 'string') return null;
+  if (request.path === '/notes' && request.method === 'GET'
+      && request.route === 'GET /notes') {
+    return { id: 'notes:collection', zone: 'own_notes' };
+  }
+  if (request.path === '/notices' && request.method === 'GET'
+      && request.route === 'GET /notices') {
+    return { id: 'notices:collection', zone: 'instructor_notice' };
+  }
+  const segments = request.path.split('/');
+  if (segments.length !== 3 || segments[0] !== '' || !ITEM.test(segments[2])) return null;
+  const id = segments[2];
+  if (id.toLowerCase() === 'export') return null;
+  if (segments[1] === 'notes' && ['GET', 'PUT'].includes(request.method)
+      && request.route === `${request.method} /notes/:id`) {
+    return { id: `note:${id}`, zone: 'own_note' };
+  }
+  if (segments[1] === 'notices' && ['GET', 'PUT'].includes(request.method)
+      && request.route === `${request.method} /notices/:id`) {
+    return { id: `notice:${id}`, zone: 'instructor_notice' };
+  }
+  return null;
+}
 
 function needsStepUp(request) {
   const signals = request?.signals;
@@ -22,13 +48,26 @@ function needsStepUp(request) {
 }
 
 export async function decide(request) {
-  const bruteForceRule = await activeDenyRuleFor(request?.signals?.source);
-  const webInjectionRule = await webInjectionRuleFor(request?.signals?.source);
-  const xdrRuleIds = [
-    ...(bruteForceRule ? [RULE_IDS[2]] : []),
-    ...(webInjectionRule ? [RULE_IDS[3]] : []),
-  ];
   const registered = request?.deviceRegistered === true;
+  if (!registered) {
+    return { schema: 'aleph.decision.v1', requestId: request?.requestId,
+      decision: 'deny', reasonCode: 'device_not_registered', ruleIds: ['device_registered'] };
+  }
+  const xdrRuleIds = [];
+  const source = request?.signals?.source;
+  // The documented none/judge_fixture inputs never need local XDR files.
+  // Preserve local IP-fixture integration, and fail closed if its store cannot be read.
+  if (typeof source === 'string' && /^[0-9a-f:.]+$/iu.test(source) && /[.:]/u.test(source)) {
+    try {
+      const bruteForce = await import('../xdr/brute-force/ztna-rules.mjs');
+      const webInjection = await import('../xdr/web-injection/ztna-rules.mjs');
+      if (await bruteForce.activeDenyRuleFor(source)) xdrRuleIds.push(RULE_IDS[2]);
+      if (await webInjection.activeDenyRuleFor(source)) xdrRuleIds.push(RULE_IDS[3]);
+    } catch {
+      return { schema: 'aleph.decision.v1', requestId: request?.requestId,
+        decision: 'deny', reasonCode: 'starter_not_ready', ruleIds: [RULE_IDS[0]] };
+    }
+  }
   const resource = resourceZone(request);
   const namedSubject = typeof request?.subjectId === 'string' && Boolean(request.subjectId);
   const vaultRead = Boolean(resource && request.method === 'GET');

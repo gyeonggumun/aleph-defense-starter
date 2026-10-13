@@ -7,7 +7,7 @@
     "test:r5": "node --test test/r5.test.mjs",
     "test:package": "node --test test/package-starter.test.mjs",
     "bundle": "node scripts/bundle.mjs",
-    "decider:test": "node scripts/decider-test.mjs",
+    "decider:test": "node scripts/decider-test.mjs && node --test test/decider-isolated.test.mjs",
     "detect:test": "node scripts/detect-test.mjs",
     "fixture:7": "node scripts/fixture-7.mjs",
     "xdr:run": "node scripts/xdr-run.mjs"
