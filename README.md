@@ -77,7 +77,7 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 `npm run xdr:run -- brute-force`로 시험합니다. 실행 결과는 `xdr/brute-force/result.json`, 일시 차단 규칙은 `xdr/brute-force/deny-rules.json`, 알림 기록은 `xdr/alerts.log`에 씁니다. 차단 규칙은 확신도 0.85 이상일 때만 추가하고 24시간 뒤 만료되며 근거 경보 번호를 포함합니다. 반복 실행은 같은 경보의 로그·규칙을 중복 추가하지 않습니다. `decide()`는 원본 경보와 정규화 경보를 모두 받는 단독 실행 모듈이고, 차단 규칙·알림 기록은 별도 `apply-actions.mjs`가 처리합니다. 현재 명확한 차단 조건은 규칙 수준 10 이상에서 같은 주소의 로그인 실패가 20건 이상이거나, 같은 비밀번호가 여러 계정에 시도된 경우입니다.
 
-`src/decider.mjs`는 기존 `starter.deny`를 그대로 적용하고, 확인된 `request.signals.source`가 유효한 출발 IP이며 일시 차단 규칙과 일치할 때 `xdr.brute_force_source_ip`를 추가로 표시합니다. 현재 운영 판정 요청의 `signals.source`는 `none`이므로, 운영에서 실제 IP 차단을 하려면 신뢰된 출발 주소를 판정 요청 계약에 전달하는 별도 운영 측 연결이 필요합니다. 이 저장소의 fixture 실행은 운영 트래픽 차단을 증명하지 않습니다.
+`src/decider.mjs`는 자료실 읽기 이외의 요청에 `starter.deny`를 적용하고, 확인된 `request.signals.source`가 유효한 출발 IP이며 일시 차단 규칙과 일치할 때 `xdr.brute_force_source_ip`를 적용합니다. 현재 운영 판정 요청의 `signals.source`는 `none`이므로, 운영에서 실제 IP 차단을 하려면 신뢰된 출발 주소를 판정 요청 계약에 전달하는 별도 운영 측 연결이 필요합니다. 이 저장소의 fixture 실행은 운영 트래픽 차단을 증명하지 않습니다.
 
 애매한 경보에만 `globalThis.Jev.reviewBruteForceAlert({ alert, pattern })` 어댑터를 호출합니다. 이 실행 환경에 Jev 응답자가 없거나 1.5초 안에 응답하지 않으면 `alert`로 남기며, 어댑터에는 정제된 다섯 필드만 전달합니다. 실행 명령은 네트워크를 사용하지 않습니다.
 
@@ -90,8 +90,14 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 - `decide.mjs`는 import 없이 원본·정제 입력과 격리 환경을 지원합니다. 애매한 요청만 `globalThis.Jev.reviewWebInjectionAlert({pattern, ruleLevel, count})` 또는 `review`로 검토합니다. 연결 없음·실패·1.5초 초과 시 confidence 0.5의 alert입니다. 실제 Jev 연결은 제공되지 않아 로컬 시험은 대체 응답자와 실패 처리를 검증했습니다. 반복 증거 없는 요청은 모델 점수가 높아도 0.84 이하로 제한합니다.
 - `npm run xdr:run -- web-injection`: `result.json`, 근거 경보 번호·24시간 만료를 갖는 `deny-rules.json`, `xdr/alerts.log`를 갱신합니다. 기존 무차별 로그인 규칙과 로그는 보존합니다.
 - 로컬 결과: **block 8 / alert 9 / record 9, 정상 경보 차단 0**. 26건의 개별 판정, 단독 import·빈 VM 실행, Jev 실패, 만료·정상 주소 허용을 시험했습니다. 실제 심판 점수는 재제출 후 확인해야 합니다.
-- 판정기는 웹 주입 규칙을 추가로 읽습니다. 기존 `starter.deny`는 유지하므로 정상 경보가 XDR에서 차단되지 않는 것과 전체 판정기의 allow는 다릅니다. 실제 계약의 `signals.source`가 `none`인 운영 경로에는 검증된 출발 주소 연결이 추가로 필요합니다.
+- 판정기는 웹 주입 규칙을 추가로 읽습니다. 6단계부터 등록 기기의 자료실 읽기를 허용하며, 일치하는 XDR 규칙은 계속 거부합니다. 실제 계약의 `signals.source`가 `none`인 운영 경로에는 검증된 출발 주소 연결이 추가로 필요합니다.
 - `aleph.config.json`의 기존 5단계 자료실 설정·발급자·경로·원본 주소는 이 보너스가 변경하지 않습니다.
+
+## 6단계 저장점 · 등록한 기기만 자료실 읽기
+
+`docs/DECIDER_REQUEST.md`의 `subjectId`는 운영 엔진이 확인한 가명 사용자이고, `deviceRegistered`는 그 엔진이 확인한 기기 등록 여부입니다. 판정기는 등록값이 정확히 `true`이고 `service: notes`의 `GET /notes` 또는 `GET /notes/:id` 요청일 때만 `allow`·`approved`를 돌려줍니다. 미등록·누락은 `deny`·`device_not_registered`이며, 기존 XDR 임시 거부 규칙이 일치하거나 다른 동작·경로이면 거부합니다. 브라우저 화면과 자료 API는 바꾸지 않았습니다.
+
+저장소에서 `npm run decider:test`를 실행해 「등록 기기의 정상 요청」 통과와 「미등록 기기의 가상 요청」 거부를 확인합니다. `npm run bundle`은 저장점 커밋 뒤 제출 JSON을 생성합니다. 실제 등록 기기 화면 접근과 미등록 기기 공격 판정은 운영 엔진·심판에서 따로 확인해야 하며, 설치 프로그램이나 기기 개인키를 이 저장소에 추가하지 않았습니다.
 
 ## 시작 틀의 자동 처리
 
@@ -99,7 +105,7 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 `aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
 
-로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 익명 `/api/notes` JSON 거부, 빈 `/data.json`, `/aleph.json`의 5단계 정보, 첫 화면 보안 헤더를 확인합니다. 이 점검은 A/B 계정의 소유자 접근 검사나 원본 Data API의 anon-key 접근을 수행하지 않습니다.
+로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 익명 `/api/notes` JSON 거부, 빈 `/data.json`, `/aleph.json`의 현재 단계 정보, 첫 화면 보안 헤더를 확인합니다. 이 점검은 A/B 계정의 소유자 접근 검사나 원본 Data API의 anon-key 접근을 수행하지 않습니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 

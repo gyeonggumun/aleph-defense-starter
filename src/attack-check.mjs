@@ -1,7 +1,7 @@
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 export async function runAttackChecks(config) {
-  if (config.step !== 5) throw new Error('5단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
+  if (![5, 6].includes(config.step)) throw new Error('5~6단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try { app = new URL(config.publicAppUrl); } catch {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
