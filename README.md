@@ -225,8 +225,10 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 
 1. `npm ci`로 의존성을 설치한 뒤 `node --test test/r5.test.mjs test/stage12-checks.test.mjs test/stage12-operations.test.mjs`를 실행합니다. 이 시험은 읽기 요청, 요청 상관 ID, 정상·금지 규칙, 미실행, 화면 요약의 일치를 확인합니다. 격리 환경에서 Node import·Buffer·TextEncoder·전역 crypto 없이 점검기를 실행하는 회귀 시험도 포함합니다.
 2. 변경을 커밋하고 해당 커밋이 실제 자료실에 배포된 뒤 `npm run bundle`을 실행합니다. 이 명령은 GET/HEAD만 최대 24건 보내고 `artifacts/submission.json` 하나만 생성합니다. 생성 파일과 `bundle-notes.json`은 커밋하지 않습니다.
-3. `npm run checks:table`로 `/api/checks`의 실제 응답을 표로 출력합니다. 화면도 이 응답의 `attempts`에서 전체·기대 충족·실패·미실행 수치를 계산합니다. 기대 문장은 `expected`에 두고 `observed`에는 HTTP 상태·바이트 수·JSON 배열 길이·ready·메서드만 기록합니다. 각 ID는 `alephEvidence.requestKey`에 전달한 요청 상관 ID이며 서버 발급 ID로 표시하지 않습니다.
+3. `npm run checks:table`로 `/api/checks`의 실제 응답을 표로 출력합니다. 화면도 이 응답의 `attempts`에서 전체·기대 충족·실패·미실행 수치를 계산합니다. 기대 문장은 `expected`에 두고 `observed`에는 HTTP 상태와 실제 응답에 존재하는 boolean `ready`만 기록합니다. 없는 값을 null로 채우지 않으며 `notes` 하위 배열의 길이를 최상위 JSON 배열 길이로 기록하지 않습니다. 각 ID는 `alephEvidence.requestKey`에 전달한 요청 상관 ID이며 서버 발급 ID로 표시하지 않습니다.
 4. 기기·정상 접속·추가 확인·정확한 경로·탐지 정상/폭주·합성 사본 검증은 `/api/checks?case=...`에서 실제 학생 함수를 실행합니다. `ready`를 고정 상수로 만들지 않으며 정상 허용 또는 금지 거부가 깨지면 false입니다. 응답은 학생 출처와 `engine: ALEPH SDP 엔진`, `engineEnforced: not_run`을 명시합니다.
 5. `step_up_live_block`, `verified_backup_restore`, `device_approval_live`는 필요한 실제 로그인·검증된 사전 사본·실기기 승인이 준비되기 전까지 요청 없이 `not_run`으로 둡니다. A/B 정상 CRUD·타인 소유권은 승인된 두 계정에서 [운영 증거 절차](docs/OPERATIONAL-EVIDENCE.md)대로 별도 확인합니다.
 
 41종 공격 전체는 심판이 실행하며 이 저장소에서 전체 시험을 실행하거나 통과로 계산하지 않습니다. 실행·중지는 앞의 설치·실행·중지·복구 절차를 사용합니다. 복구는 검증된 사본의 범위를 먼저 확인하고 대상만 적용하며 다른 서비스와 감사 이력을 보존합니다.
+
+가점 조건은 새로 받은 저장소에서 `npm install`이 성공하는지, `npm run decider:test`에서 문서의 18개 요청 이름만 읽고 응답 다섯 항목과 모든 `ruleIds`가 유효한지, `aleph.config.json`의 `step`이 12 이상인지 확인합니다. 계약 검증 시험은 문서 밖 요청 항목을 읽으면 즉시 실패하도록 만들어져 있습니다.

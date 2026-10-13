@@ -5,7 +5,7 @@
 - 단계별 정상 요청과 금지 요청을 따로 실행하고, 실제 HTTP 응답의 상태 코드와 JSON 오류 코드만 기록합니다.
 - 요청 ID는 보호 API 응답의 `X-Request-Id`/`requestId` 또는 Vercel의 `x-vercel-id`를 기록합니다. 둘 다 없으면 `없음`으로 둡니다. 임의 ID를 서버 추적 ID처럼 적지 않습니다.
 - 확인 시각은 UTC ISO 형식으로 기록합니다. 토큰, 이메일, 메모 본문, 기기 자격 증명은 표·로그·제출물에 넣지 않습니다.
-- 번들 `observed`에는 심판이 확인할 수 있는 HTTP 상태, `bodyBytes`, `jsonArrayLength`, `jsonReady`, `method`만 둡니다. 자동 점검의 요청 상관 ID와 시각은 `GET /api/checks`의 `attempts`에서 읽습니다. 이 ID는 `alephEvidence.requestKey`이며 API 서버가 발급한 ID와 구별합니다. 화면과 제출 묶음은 같은 목록을 사용합니다.
+- 번들 `observed`에는 실제 HTTP 상태와 응답의 최상위 `ready`가 boolean일 때만 `jsonReady`를 둡니다. 예: `HTTP 401`, `HTTP 200; jsonReady=true`. 없는 값을 null로 채우거나 `notes` 같은 하위 배열의 길이를 최상위 배열 길이로 기록하지 않습니다. 자동 점검의 요청 상관 ID와 시각은 `GET /api/checks`의 `attempts`에서 읽습니다. 이 ID는 `alephEvidence.requestKey`이며 API 서버가 발급한 ID와 구별합니다. 화면과 제출 묶음은 같은 목록을 사용합니다.
 - `npm run bundle`의 정적/API 자기 점검은 아래 특정 행만 증명하며 A/B 로그인, 엔진 판정, 운영 회수, 백업 복원을 대신하지 않습니다.
 - 실행하지 않은 행은 반드시 `미실행`으로 남깁니다. 41종 총공세는 별도 심판 시험이며 이 표의 통과나 가상 fixture 실행으로 채우지 않습니다.
 

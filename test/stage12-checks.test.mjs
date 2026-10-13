@@ -50,7 +50,7 @@ test('stage 12 public checks expose live results with unique evidence keys and h
     assert.equal(new Set(requests.map(item => item.evidence.requestKey)).size, requests.length);
     assert.ok(requests.every(item => item.evidence.caseId && item.method === 'GET' && item.query !== '?attackId=1'));
     assert.ok(result.body.attempts.filter(item => item.observed !== 'not_run')
-      .every(item => item.requestId && item.checkedAt && /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET(?:; urlSha256=[a-f0-9]{64})?$/u.test(item.observed)));
+      .every(item => item.requestId && item.checkedAt && /^HTTP \d{3}(?:; jsonReady=(?:true|false))?$/u.test(item.observed)));
     assert.ok(result.body.attempts.filter(item => item.observed === 'not_run')
       .every(item => item.result === 'not_run' && item.requestId === null && item.checkedAt === null));
   } finally {

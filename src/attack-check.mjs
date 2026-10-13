@@ -8,15 +8,6 @@ function newRequestKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
-function utf8ByteLength(value) {
-  let length = 0;
-  for (const character of value) {
-    const point = character.codePointAt(0);
-    length += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
-  }
-  return length;
-}
-
 export function getLastCheckEvidence() {
   return lastCheckEvidence.map(({ attackId, requestId, checkedAt }) => ({ attackId, requestId, checkedAt }));
 }
@@ -59,19 +50,11 @@ export async function runAttackChecks(config) {
     } catch {}
     let bodyJson = null;
     try { bodyJson = JSON.parse(bodyText); } catch {}
-    const jsonArrayLength = Array.isArray(bodyJson) ? bodyJson.length
-      : Array.isArray(bodyJson?.notes) ? bodyJson.notes.length : null;
     const jsonReady = typeof bodyJson?.ready === 'boolean' ? bodyJson.ready : null;
     const checkedAt = new Date().toISOString();
     const requestId = requestKey;
-    const bodyBytes = bodyReadable ? utf8ByteLength(bodyText) : null;
-    const fields = [
-      `HTTP ${response.status}`,
-      `bodyBytes=${bodyBytes ?? 'null'}`,
-      `jsonArrayLength=${jsonArrayLength ?? 'null'}`,
-      `jsonReady=${jsonReady ?? 'null'}`,
-      `method=${method}`,
-    ];
+    const fields = [`HTTP ${response.status}`];
+    if (jsonReady !== null) fields.push(`jsonReady=${jsonReady}`);
     const observed = fields.join('; ');
     const ran = { response, bodyText, bodyJson, bodyReadable, checkedAt, attackId, requestId, observed };
     return { ...ran, result: matches(ran) ? 'blocked' : 'breached' };

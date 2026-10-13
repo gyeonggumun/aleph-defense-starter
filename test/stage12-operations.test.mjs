@@ -98,7 +98,7 @@ test('operations screen summary and table use the same observed submission repor
     schema: 'aleph.stage12.checks.v1', step: 12, commit: 'a'.repeat(40), checkedAt,
     attempts: [
       { attackId: 'anonymous_notes_api', stage: 3, expected: '401 JSON', result: 'blocked',
-        observed: `HTTP 401; bodyBytes=19; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=${'b'.repeat(64)}`,
+        observed: 'HTTP 401',
         requestId: 'request-1', checkedAt },
       { attackId: 'step_up_live_block', stage: 7, expected: '재인증 전 자료 없음', observed: 'not_run', result: 'not_run',
         requestId: null, checkedAt: null },

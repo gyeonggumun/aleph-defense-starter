@@ -90,14 +90,15 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
     const results = await runAttackChecks(config);
     assert.equal(results.length, 6);
     assert.match(results[0].observed, /HTTP 401/u);
-    assert.match(results[2].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET/u);
-    assert.match(results[4].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET/u);
-    assert.match(results[5].observed, /HTTP 404; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET/u);
+    assert.equal(results[1].observed, 'HTTP 200');
+    assert.equal(results[2].observed, 'HTTP 200');
+    assert.equal(results[4].observed, 'HTTP 200');
+    assert.equal(results[5].observed, 'HTTP 404');
     assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/', '/api/auth']);
     assert.deepEqual(requested.map(item => item.attackId), results.map(item => item.attackId));
     assert.equal(new Set(requested.map(item => item.requestKey)).size, requested.length);
     assert.ok(requested.every(item => typeof item.requestKey === 'string' && item.requestKey.length >= 16));
-    assert.ok(results.every(item => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET$/u.test(item.observed)));
+    assert.ok(results.every(item => /^HTTP \d{3}$/u.test(item.observed)));
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
   } finally {
@@ -167,10 +168,12 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
     assert.ok(evidence.filter(item => item.requestId).every(item => typeof item.checkedAt === 'string'));
     assert.ok(evidence.filter(item => !item.requestId).every(item => item.checkedAt === null));
     assert.ok(results.filter(result => requested.some(item => item.attackId === result.attackId))
-      .every(result => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET$/u.test(result.observed)
+      .every(result => /^HTTP \d{3}(?:; jsonReady=(?:true|false))?$/u.test(result.observed)
         && result.observed.length <= 300));
     assert.ok(results.filter(result => !requested.some(item => item.attackId === result.attackId))
       .every(result => result.observed === 'not_run'));
+    assert.ok(results.filter(result => result.attackId.startsWith('rule_'))
+      .every(result => result.observed === 'HTTP 200; jsonReady=true'));
   } finally {
     globalThis.fetch = originalFetch;
     globalThis.TextEncoder = originalTextEncoder;
@@ -205,7 +208,7 @@ test('checker runs without Node imports, Buffer, TextEncoder or global crypto', 
   const attempts = await isolated.runAttackChecks(config);
   assert.equal(attempts.length, 6);
   assert.ok(attempts.every(item => item.result === 'blocked'));
-  assert.match(attempts[0].observed, new RegExp(`bodyBytes=${Buffer.byteLength(text, 'utf8')};`));
+  assert.equal(attempts[0].observed, 'HTTP 401');
 });
 
 const authProxyConfig = {
