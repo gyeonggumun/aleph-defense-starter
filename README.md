@@ -115,7 +115,7 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 ## 8단계 저장점 · 자료 자원 구역
 
-`src/decider.mjs`는 엔진이 확인한 `service`·`method`·`route`·정확한 `path`로 메모 `note:<ID>`와 강사 공지 `notice:<ID>`를 구별합니다. 목록도 서로 다른 `notes:collection`·`notices:collection` 자원입니다. 알 수 없는 경로, 쿼리가 붙은 경로, `export` 같은 비자료 경로는 기본 거부합니다. 기존 `/api/notes` 주소와 화면 메뉴는 유지했습니다. 등록 기기·XDR·복합 위험 규칙도 유지하고, 메모 API는 `owner_id`를 다시 확인합니다.
+`src/decider.mjs`는 엔진이 확인한 `service`·`method`·`route`·정확한 `path`로 메모 `note:<UUID>`와 강사 공지 `notice:<UUID>`를 구별합니다. 목록도 서로 다른 `notes:collection`·`notices:collection` 자원입니다. UUID가 아닌 ID, 알 수 없는 경로, 쿼리가 붙은 경로, `export` 같은 비자료 경로는 기본 거부합니다. 기존 `/api/notes` 주소와 화면 메뉴는 유지했습니다. 등록 기기·XDR·복합 위험 규칙도 유지하고, 메모 API는 `owner_id`를 다시 확인합니다.
 
 학습 DB에는 `sql/stage8-instructor-notices.sql`의 `public.instructor_notices`와 가상 공지 한 건을 적용했습니다. RLS는 켜져 있고 `PUBLIC`·`anon`·`authenticated`의 테이블 권한은 회수했습니다. `/api/notices`와 `/api/notices/:id`의 읽기는 검증된 로그인만 허용합니다. 공지 수정은 `src/notices-api.mjs`가 Supabase Auth Admin에서 확인한 계정의 `app_metadata.role === 'instructor'`일 때만 허용하며, 본문의 `role`과 `user_metadata`는 무시합니다. 거부는 JSON 401·403·404로 짧게 돌려줍니다.
 

@@ -25,7 +25,7 @@ test('배정된 메모만 허용하고 다른 주체·자원·공지 수정을 �
   assert.equal((await decide({ ...own, path: '/notes/23e19e6c-6223-4d86-a635-8c28a5e1e787' })).decision, 'deny');
   assert.equal((await decide({ ...notice, role: 'instructor' })).decision, 'deny');
   assert.equal((await decide({ ...own, queryLength: 8 })).decision, 'deny');
-  for (const bad of ['/notes/export', '/notes/export/now', `/notes/${id}/export`, `/notes/${id}?export=1`]) {
+  for (const bad of ['/notes/export', '/notes/export/now', '/notes/demo', `/notes/${id}/export`, `/notes/${id}?export=1`]) {
     assert.equal((await decide(request('GET', bad, 'GET /notes/:id'))).decision, 'deny');
   }
   assert.equal((await decide({ ...own, deviceRegistered: false })).reasonCode, 'device_not_registered');
