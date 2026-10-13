@@ -66,7 +66,7 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
   try {
     globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
-      requested.push({ path: parsed.pathname, attackId: parsed.searchParams.get('attackId'), init });
+      requested.push({ path: parsed.pathname, attackId: init.alephEvidence?.caseId, init });
       if (parsed.pathname === '/api/notes') return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
         status: 401, headers: { 'content-type': 'application/json' },
       });
@@ -100,14 +100,16 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
   }
 });
 
-test('stage 12 tags every requested check and leaves unrequested live checks not_run', async () => {
+test('stage 12 correlates each request through alephEvidence and leaves unrequested live checks not_run', async () => {
   const originalFetch = globalThis.fetch;
   const requested = [];
   const stage12 = { ...config, step: 12, originalApiUrl: config.originalApiUrl };
   try {
-    globalThis.fetch = async url => {
+    globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
-      const attackId = parsed.searchParams.get('attackId');
+      const attackId = init.alephEvidence?.caseId;
+      assert.equal(init.alephEvidence?.requestKey, 'read');
+      assert.equal(parsed.searchParams.has('attackId'), false);
       requested.push({ path: parsed.pathname, attackId });
       const headers = { 'x-vercel-id': `trace-${attackId}` };
       if (parsed.pathname === '/api/notes' || parsed.pathname === '/api/notices') {

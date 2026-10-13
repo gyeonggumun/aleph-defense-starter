@@ -11,12 +11,15 @@ export async function runAttackChecks(config) {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
   }
 
-  const options = { redirect: 'error', signal: AbortSignal.timeout(10000) };
+  const options = { redirect: 'error' };
   const requestCheck = (attackId, path, init = options) => {
     const url = new URL(path, app);
-    url.searchParams.set('attackId', attackId);
     const checkedAt = new Date().toISOString();
-    return fetch(url, init).then(response => ({ response, checkedAt, attackId }));
+    return fetch(url, {
+      ...init,
+      signal: init.signal ?? AbortSignal.timeout(10000),
+      alephEvidence: { caseId: attackId, requestKey: 'read' },
+    }).then(response => ({ response, checkedAt, attackId }));
   };
   const checks = [
     ['anonymous_notes_api', '/api/notes'],
