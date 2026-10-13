@@ -119,7 +119,7 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 학습 DB에는 `sql/stage8-instructor-notices.sql`의 `public.instructor_notices`와 가상 공지 한 건을 적용했습니다. RLS는 켜져 있고 `PUBLIC`·`anon`·`authenticated`의 테이블 권한은 회수했습니다. `/api/notices`와 `/api/notices/:id`의 읽기는 검증된 로그인만 허용합니다. 공지 수정은 `src/notices-api.mjs`가 Supabase Auth Admin에서 확인한 계정의 `app_metadata.role === 'instructor'`일 때만 허용하며, 본문의 `role`과 `user_metadata`는 무시합니다. 거부는 JSON 401·403·404로 짧게 돌려줍니다.
 
-**구역 연결표:** 판정기는 서버가 관리하는 `ALEPH_RESOURCE_BINDINGS` JSON 배열에서 엔진 확인 주체·선택적 반/프로젝트/기기 범위·정확한 경로·자원 ID·허용 메서드를 대조합니다. 메모는 연결표의 `ownerSubjectId`가 요청 주체와 같아야 하고, 공지 수정은 연결표의 `instructor: true`가 필요합니다. 브라우저의 소유자·역할 주장은 사용하지 않습니다. 연습 연결표는 UUID 메모를 `verified-subject`, 가상 `demo` 자원을 `learner_fixture`에 각각 한정해 상대 주체의 요청을 거부합니다. `demo`는 판정 연습 전용이며 실제 메모 API는 UUID만 받습니다. 운영 연결표가 없는 개별 메모와 공지 수정 요청은 거부합니다. 메모 목록은 API가 로그인한 계정의 `owner_id`로 제한하며, 공지 읽기는 로그인한 학생에게 허용합니다.
+**구역 연결표:** 판정기는 서버가 관리하는 `ALEPH_RESOURCE_BINDINGS` JSON 배열에서 엔진 확인 주체·반·프로젝트·기기·정확한 경로·자원 ID·허용 메서드가 모두 일치할 때만 개별 자료를 허용합니다. 이 환경변수가 있으면 연습 연결표를 대체하며, 비어 있거나 잘못된 값은 권한을 추가하지 않습니다. 메모는 연결표의 `ownerSubjectId`가 요청 주체와 같아야 하고, 공지 수정은 연결표의 `instructor: true`가 필요합니다. 브라우저의 소유자·역할 주장은 사용하지 않습니다. 환경변수가 없을 때 연습 연결표는 `demo` 메모와 `learner_fixture` 주체만 연결합니다. 실제 UUID 메모는 정확한 운영 연결표에 소유 관계가 등록되지 않으면 거부합니다. 메모 API 목록은 로그인한 계정의 `owner_id`로 제한하며, 공지 읽기는 로그인한 학생에게 허용합니다.
 
 현재 `docs/DECIDER_REQUEST.md`의 가명 `subjectId`는 Supabase 사용자 UUID와 직접 비교할 수 없습니다. 운영 연결표에는 엔진이 확인한 가명 주체·기기와 자원 소유 관계를 별도로 등록해야 합니다. 실제 A/B 연결표와 강사 계정이 없어 운영 구역 판정과 강사 수정 실측은 미실행이며, 로컬 가상 시험을 심판의 100점 판정으로 간주하지 않습니다.
 

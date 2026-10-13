@@ -6,21 +6,26 @@ export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr
 
 const ITEM = /^[a-zA-Z0-9_-]{1,128}$/u;
 const PRACTICE_BINDINGS = [
-  ['23e19e6c-6223-4d86-a635-8c28a5e1e786', 'verified-subject'],
   ['demo', 'learner_fixture'],
 ].map(([id, subjectId]) => ({
-  subjectId, deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
+  subjectId, classId: 'class_fixture', projectId: 'project_fixture',
+  deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
   resourceId: `note:${id}`, ownerSubjectId: subjectId, permissions: ['GET', 'PUT'],
 }));
 
 function resourceBindings() {
   const raw = typeof process !== 'undefined' ? process.env?.ALEPH_RESOURCE_BINDINGS : undefined;
-  if (!raw) return PRACTICE_BINDINGS;
+  if (raw === undefined) return PRACTICE_BINDINGS;
   try {
     const entries = JSON.parse(raw);
-    return Array.isArray(entries) ? [...PRACTICE_BINDINGS, ...entries] : PRACTICE_BINDINGS;
+    if (!Array.isArray(entries)) return [];
+    return entries.filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry)
+      && ['subjectId', 'classId', 'projectId', 'deviceId', 'service', 'path', 'resourceId']
+        .every(key => typeof entry[key] === 'string' && entry[key].length > 0)
+      && Array.isArray(entry.permissions) && entry.permissions.length > 0
+      && entry.permissions.every(method => ['GET', 'PUT'].includes(method)));
   } catch {
-    return PRACTICE_BINDINGS;
+    return [];
   }
 }
 
@@ -31,9 +36,9 @@ function resourceAllowed(request, resource) {
   if (resource.zone === 'own_notes' || request.method === 'GET'
       && resource.zone === 'instructor_notice') return true;
   return resourceBindings().some(entry => entry?.subjectId === request.subjectId
-    && (entry.classId === undefined || entry.classId === request.classId)
-    && (entry.projectId === undefined || entry.projectId === request.projectId)
-    && (entry.deviceId === undefined || entry.deviceId === request.deviceId)
+    && entry.classId === request.classId
+    && entry.projectId === request.projectId
+    && entry.deviceId === request.deviceId
     && entry.service === request.service
     && entry.path === request.path && entry.resourceId === resource.id
     && Array.isArray(entry.permissions) && entry.permissions.includes(request.method)

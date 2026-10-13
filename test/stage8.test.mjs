@@ -7,23 +7,22 @@ import { handleNoticesRequest } from '../src/notices-api.mjs';
 
 const id = '23e19e6c-6223-4d86-a635-8c28a5e1e786';
 const request = (method, path, route) => ({ schema: 'aleph.decision.v1', requestId: randomUUID(),
-  classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'verified-subject',
+  classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'learner_fixture',
   deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', deviceRegistered: true,
   method, path, route, queryLength: 0,
   signals: { source: 'none' }, recentEvents: [], stepUp: { verified: false, authAgeSeconds: null } });
 
 test('배정된 메모만 허용하고 다른 주체·자원·공지 수정을 거부', async () => {
-  const own = request('PUT', `/notes/${id}`, 'PUT /notes/:id');
+  const own = request('PUT', '/notes/demo', 'PUT /notes/:id');
   const notice = request('PUT', `/notices/${id}`, 'PUT /notices/:id');
-  assert.equal(resourceZone(own).id, `note:${id}`);
+  assert.equal(resourceZone(own).id, 'note:demo');
   assert.equal(resourceZone(notice).id, `notice:${id}`);
   assert.equal((await decide(own)).decision, 'allow');
-  assert.equal((await decide({ ...own, subjectId: 'learner_fixture', path: '/notes/demo' })).decision, 'allow');
   assert.equal((await decide(notice)).decision, 'deny');
   assert.equal((await decide(request('GET', '/notices', 'GET /notices'))).decision, 'allow');
-  assert.equal((await decide({ ...own, subjectId: 'learner_fixture' })).decision, 'deny');
+  assert.equal((await decide({ ...own, subjectId: 'verified-subject' })).decision, 'deny');
   assert.equal((await decide({ ...own, deviceId: 'bbbbbbbbbbbbbbbb' })).decision, 'deny');
-  assert.equal((await decide({ ...own, path: '/notes/23e19e6c-6223-4d86-a635-8c28a5e1e787' })).decision, 'deny');
+  assert.equal((await decide({ ...own, path: `/notes/${id}` })).decision, 'deny');
   assert.equal((await decide({ ...notice, role: 'instructor' })).decision, 'deny');
   assert.equal((await decide({ ...own, queryLength: 8 })).decision, 'deny');
   for (const bad of ['/notes/export', '/notes/export/now', '/notes/unassigned', `/notes/${id}/export`, `/notes/${id}?export=1`]) {
@@ -44,6 +43,32 @@ test('서버가 배정한 강사만 정확한 공지를 수정', async () => {
       subjectId: 'instructor_fixture' };
     assert.equal((await decide(edit)).decision, 'allow');
     assert.equal((await decide({ ...edit, subjectId: 'learner_fixture' })).decision, 'deny');
+  } finally {
+    if (previous === undefined) delete process.env.ALEPH_RESOURCE_BINDINGS;
+    else process.env.ALEPH_RESOURCE_BINDINGS = previous;
+  }
+});
+
+test('운영 연결표는 연습 연결을 대체하고 주체·범위·기기·경로·소유자가 모두 맞아야 허용', async () => {
+  const previous = process.env.ALEPH_RESOURCE_BINDINGS;
+  process.env.ALEPH_RESOURCE_BINDINGS = JSON.stringify([{
+    classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'verified-subject',
+    deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
+    resourceId: `note:${id}`, ownerSubjectId: 'verified-subject', permissions: ['GET', 'PUT'],
+  }]);
+  try {
+    const own = { ...request('GET', `/notes/${id}`, 'GET /notes/:id'),
+      subjectId: 'verified-subject' };
+    assert.equal((await decide(own)).decision, 'allow');
+    assert.equal((await decide({ ...own, subjectId: 'learner_fixture' })).decision, 'deny');
+    assert.equal((await decide({ ...own, classId: 'other-class' })).decision, 'deny');
+    assert.equal((await decide({ ...own, projectId: 'other-project' })).decision, 'deny');
+    assert.equal((await decide({ ...own, deviceId: 'bbbbbbbbbbbbbbbb' })).decision, 'deny');
+
+    process.env.ALEPH_RESOURCE_BINDINGS = '[]';
+    assert.equal((await decide(own)).decision, 'deny');
+    process.env.ALEPH_RESOURCE_BINDINGS = '{invalid';
+    assert.equal((await decide(own)).decision, 'deny');
   } finally {
     if (previous === undefined) delete process.env.ALEPH_RESOURCE_BINDINGS;
     else process.env.ALEPH_RESOURCE_BINDINGS = previous;
