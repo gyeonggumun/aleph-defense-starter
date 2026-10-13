@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 let lastCheckEvidence = [];
@@ -9,10 +11,7 @@ function newRequestKey() {
 }
 
 async function sha256(value) {
-  try {
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-  } catch { return null; }
+  return createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
 export function getLastCheckEvidence() {
@@ -59,7 +58,7 @@ export async function runAttackChecks(config) {
     const checkedAt = new Date().toISOString();
     const urlSha256 = await sha256(url.href);
     const requestId = requestKey;
-    const bodyBytes = bodyReadable ? new TextEncoder().encode(bodyText).byteLength : null;
+    const bodyBytes = bodyReadable ? Buffer.byteLength(bodyText, 'utf8') : null;
     const fields = [
       `HTTP ${response.status}`,
       `bodyBytes=${bodyBytes ?? 'null'}`,

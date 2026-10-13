@@ -105,12 +105,14 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
 
 test('stage 12 correlates each request through alephEvidence and leaves unrequested live checks not_run', async () => {
   const originalFetch = globalThis.fetch;
+  const originalTextEncoder = globalThis.TextEncoder;
   const requested = [];
   const stage12 = { ...config, step: 12, originalApiUrl: config.originalApiUrl };
   const textOnly = response => Object.assign(response, {
     arrayBuffer: async () => { throw new TypeError('arrayBuffer unavailable in isolated runner'); },
   });
   try {
+    globalThis.TextEncoder = undefined;
     globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
       const attackId = init.alephEvidence?.caseId;
@@ -163,6 +165,7 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
       .every(result => result.observed === 'not_run'));
   } finally {
     globalThis.fetch = originalFetch;
+    globalThis.TextEncoder = originalTextEncoder;
   }
 });
 
