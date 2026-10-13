@@ -49,7 +49,7 @@ function context(role, identity = { userId: 'verified-user' }) {
   const row = { id, title: '수정된 공지', content: '가상 내용' };
   const query = { update() { updated = true; return this; }, eq() { return this; },
     select() { return this; }, async maybeSingle() { return { data: row, error: null }; } };
-  return { verifyLogin: async () => identity,
+  return { verifyLogin: async () => identity, deviceApproved: async () => true,
     database: { auth: { admin: { getUserById: async () => ({ data: { user: {
       id: 'verified-user', app_metadata: role === 'metadata-only' ? {} : { role },
       user_metadata: { role: 'instructor' },

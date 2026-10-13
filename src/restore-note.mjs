@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { deviceApproved } from './device-approval.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const SHA256 = /^[a-f0-9]{64}$/iu;
@@ -51,6 +52,9 @@ export async function handleRestoreNote(request, response, options = {}) {
   let identity;
   try { identity = await services.verifyLogin(request.headers?.authorization); } catch {}
   if (!identity) return reply(response, 401, { error: 'UNAUTHORIZED' });
+  if (!await (services.deviceApproved ?? deviceApproved)(services.database, identity, request.headers?.['x-device-grant'])) {
+    return reply(response, 403, { error: 'DEVICE_NOT_APPROVED' });
+  }
   const backup = checkedBackup(settings.RESTORE_NOTE_BACKUP_JSON,
     settings.RESTORE_NOTE_BACKUP_SHA256, bUserId);
   if (!backup) return reply(response, 503, { error: 'VERIFIED_BACKUP_UNAVAILABLE' });

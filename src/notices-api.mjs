@@ -1,4 +1,6 @@
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+import { deviceApproved } from './device-approval.mjs';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 function respond(response, status, payload) {
   response.setHeader('Cache-Control', 'no-store');
@@ -22,6 +24,9 @@ export async function handleNoticesRequest(request, response, suppliedContext) {
   let identity;
   try { identity = await context.verifyLogin(request.headers?.authorization); } catch {}
   if (!identity) return respond(response, 401, { error: 'UNAUTHORIZED' });
+  if (!await (context.deviceApproved ?? deviceApproved)(context.database, identity, request.headers?.['x-device-grant'])) {
+    return respond(response, 403, { error: 'DEVICE_NOT_APPROVED' });
+  }
 
   const id = request.query?.id;
   if (id !== undefined && (typeof id !== 'string' || !UUID.test(id))) {

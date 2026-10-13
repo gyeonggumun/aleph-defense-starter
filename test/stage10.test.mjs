@@ -84,7 +84,8 @@ test('one-note restore requires pinned backup, B identity and matching preview h
     RESTORE_NOTE_BACKUP_SHA256: hash(raw) };
   const rows = [{ id, owner_id: owner, title: '바뀐 메모', content: '바뀐 내용' },
     { id: otherId, owner_id: otherId, title: '보존', content: '보존 내용' }];
-  const services = { database: database(rows), verifyLogin: async () => ({ userId: owner }) };
+  const services = { database: database(rows), verifyLogin: async () => ({ userId: owner }),
+    deviceApproved: async () => true };
   const request = { method: 'POST', headers: { authorization: 'test' }, body: { id, confirm: false } };
   const missing = response();
   await handleRestoreNote(request, missing, { services, settings: {} });

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import config from '../aleph.config.json' with { type: 'json' };
 import { createLoginVerifier } from './verify-login.mjs';
+import { deviceApproved } from './device-approval.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 let services;
@@ -55,7 +56,7 @@ function validateNote(body) {
   return { title: body.title.trim(), content: body.body.trim() };
 }
 
-export async function handleNotesRequest(request, response) {
+export async function handleNotesRequest(request, response, suppliedContext) {
   response.setHeader('Cache-Control', 'no-store');
   const method = request.method;
   if (!['GET', 'POST', 'PUT', 'DELETE'].includes(method)) {
@@ -64,12 +65,15 @@ export async function handleNotesRequest(request, response) {
   }
 
   let context;
-  try { context = getServices(); } catch {
+  try { context = suppliedContext ?? getServices(); } catch {
     return respond(response, 503, { error: 'AUTH_OR_DATABASE_NOT_CONFIGURED' });
   }
   let identity = null;
   try { identity = await context.verifyLogin(request.headers?.authorization); } catch {}
   if (!identity) return respond(response, 401, { error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
+  if (!await (context.deviceApproved ?? deviceApproved)(context.database, identity, request.headers?.['x-device-grant'])) {
+    return respond(response, 403, { error: 'DEVICE_NOT_APPROVED', message: '승인된 기기 확인이 필요합니다.' });
+  }
 
   const rawId = request.query?.id;
   const id = typeof rawId === 'string' ? rawId : undefined;
