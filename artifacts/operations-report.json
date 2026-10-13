@@ -1,0 +1,88 @@
+{
+  "schema": "aleph.stage12.checks.v1",
+  "step": 12,
+  "commit": "177bc8ba1b0b38f2d2ad01ee4de6a21e1b1a2919",
+  "checkedAt": "2026-10-13T07:01:41.174Z",
+  "total": 11,
+  "executed": 8,
+  "notRun": 3,
+  "attempts": [
+    {
+      "attackId": "anonymous_notes_api",
+      "expected": "비로그인 목록 요청은 401/403 JSON 오류",
+      "observed": "HTTP 401; bodyBytes=66; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=091045f7ec8e4268adb259cf3bba47f6d31e7284dd3d650d14f8cae3cac0055a",
+      "requestId": "icn1::iad1::bq79k-1791874898894-4f3af48c0a7c",
+      "checkedAt": "2026-10-13T07:01:38.708Z"
+    },
+    {
+      "attackId": "public_json_empty",
+      "expected": "공개 data.json에 메모와 1단계 표시가 없음",
+      "observed": "HTTP 200; bodyBytes=18; jsonArrayLength=0; jsonReady=null; method=GET; urlSha256=7f7bf1c16f2eb0d441a91fd4d1f354903490df4ba8c1b892ccd8b99aca62b8ec",
+      "requestId": "icn1::gfmdp-1791874899279-4d1bb5ad78fa",
+      "checkedAt": "2026-10-13T07:01:39.243Z"
+    },
+    {
+      "attackId": "deployment_identity",
+      "expected": "/aleph.json에 12단계 정보와 허용 경로가 있음",
+      "observed": "HTTP 200; bodyBytes=897; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=ea4cdc1e37260a99494dff34f306285b37c7abcd0bb170e88e4f616df806ed6e",
+      "requestId": "icn1::bq79k-1791874899780-fa08173ad5c4",
+      "checkedAt": "2026-10-13T07:01:39.274Z"
+    },
+    {
+      "attackId": "security_header",
+      "expected": "첫 화면에 nosniff 또는 CSP 보안 헤더가 있음",
+      "observed": "HTTP 200; bodyBytes=23232; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=57361d14119d8ca3c54dd5181f6be4b0ce002a31b1a73efbf1b089866f893ac8",
+      "requestId": "icn1::hfpch-1791874899813-32890d0603b3",
+      "checkedAt": "2026-10-13T07:01:39.718Z"
+    },
+    {
+      "attackId": "browser_supabase_key_absent",
+      "expected": "첫 화면 코드에 Supabase API 키가 없음",
+      "observed": "HTTP 200; bodyBytes=23232; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=57361d14119d8ca3c54dd5181f6be4b0ce002a31b1a73efbf1b089866f893ac8",
+      "requestId": "icn1::7tdqh-1791874900258-17f846d6424f",
+      "checkedAt": "2026-10-13T07:01:39.751Z"
+    },
+    {
+      "attackId": "auth_proxy_restricts_routes",
+      "expected": "인증 중계가 Auth 경로 이외의 요청을 거부",
+      "observed": "HTTP 404; bodyBytes=21; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=ccdad9de9105ac1a8f3d855d1bffb1fc4e1c847251763bf390731c1fd1acb0d0",
+      "requestId": "icn1::iad1::slqc9-1791874900292-e81b2621ea42",
+      "checkedAt": "2026-10-13T07:01:40.240Z"
+    },
+    {
+      "attackId": "anonymous_notices_api",
+      "expected": "비로그인 공지 요청은 401/403 JSON 오류",
+      "observed": "HTTP 401; bodyBytes=24; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=cda3138dd0c9ad255796be22d2901c63ee840f332be671887575a560379ff3ec",
+      "requestId": "icn1::iad1::kjjjm-1791874900783-87214d63dc3c",
+      "checkedAt": "2026-10-13T07:01:40.806Z"
+    },
+    {
+      "attackId": "step_up_live_block",
+      "expected": "같은 로그인으로 다시 확인하기 전에는 복합 위험 요청에서 자료가 없음",
+      "observed": "not_run",
+      "requestId": null,
+      "checkedAt": null
+    },
+    {
+      "attackId": "verified_backup_restore",
+      "expected": "검증된 사본으로 시험 정책과 B의 메모 한 건만 복구하고 정상·금지 요청을 재시험",
+      "observed": "not_run",
+      "requestId": null,
+      "checkedAt": null
+    },
+    {
+      "attackId": "device_approval_live",
+      "expected": "승인 전 자료 없음, 승인된 기기의 WebAuthn 확인 뒤 정상 화면",
+      "observed": "not_run",
+      "requestId": null,
+      "checkedAt": null
+    },
+    {
+      "attackId": "operations_requires_auth",
+      "expected": "/api/operations는 로그인 전 401 JSON과 요청 ID를 반환",
+      "observed": "HTTP 401; bodyBytes=114; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=eaa0614aadd1c1ecec1724650eab76b7175bb7a1c49993eef85b92938c797baa",
+      "requestId": "8121c451-3d85-478d-878d-34454104a328",
+      "checkedAt": "2026-10-13T07:01:41.173Z"
+    }
+  ]
+}
