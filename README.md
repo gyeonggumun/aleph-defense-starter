@@ -115,13 +115,13 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 ## 8단계 저장점 · 자료 자원 구역
 
-`src/decider.mjs`는 엔진이 확인한 `service`·`method`·`route`·정확한 `path`로 메모 `note:<ID>`와 강사 공지 `notice:<ID>`를 구별합니다. 목록도 서로 다른 `notes:collection`·`notices:collection` 자원입니다. 연결표에 없는 ID, 알 수 없는 경로, 쿼리가 붙은 경로, `export` 같은 비자료 경로는 기본 거부합니다. 실제 메모 API는 UUID만 받고 `owner_id`를 다시 확인합니다. 기존 `/api/notes` 주소와 화면 메뉴는 유지했습니다. 등록 기기·XDR·복합 위험 규칙도 유지합니다.
+`src/decider.mjs`는 엔진이 확인한 `service`·`method`·`route`·정확한 `path`가 맞는 읽기만 허용합니다. 로그인 사용자의 메모 목록은 소유자 필터를 적용하는 `GET /api/my/notes`로 분리했습니다. 기존의 모호한 `GET /api/notes` 목록과 모든 쓰기 요청은 판정기에서 거부합니다. 단건 메모 읽기는 최종 API가 검증된 로그인 ID와 저장된 `owner_id`를 다시 대조합니다. 알 수 없는 경로, 쿼리가 붙은 경로, `export` 같은 비자료 경로도 거부합니다. 등록 기기·XDR·복합 위험 규칙은 유지합니다.
 
 학습 DB에는 `sql/stage8-instructor-notices.sql`의 `public.instructor_notices`와 가상 공지 한 건을 적용했습니다. RLS는 켜져 있고 `PUBLIC`·`anon`·`authenticated`의 테이블 권한은 회수했습니다. `/api/notices`와 `/api/notices/:id`의 읽기는 검증된 로그인만 허용합니다. 공지 수정은 `src/notices-api.mjs`가 Supabase Auth Admin에서 확인한 계정의 `app_metadata.role === 'instructor'`일 때만 허용하며, 본문의 `role`과 `user_metadata`는 무시합니다. 거부는 JSON 401·403·404로 짧게 돌려줍니다.
 
-**구역 연결표:** 판정기는 서버가 관리하는 `ALEPH_RESOURCE_BINDINGS` JSON 배열에서 엔진 확인 주체·반·프로젝트·기기·정확한 경로·자원 ID·허용 메서드가 모두 일치할 때만 개별 자료를 허용합니다. 이 환경변수가 있으면 연습 연결표를 대체하며, 비어 있거나 잘못된 값은 권한을 추가하지 않습니다. 메모는 연결표의 `ownerSubjectId`가 요청 주체와 같아야 하고, 공지 수정은 연결표의 `instructor: true`가 필요합니다. 브라우저의 소유자·역할 주장은 사용하지 않습니다. 환경변수가 없을 때 연습 연결표는 `demo` 메모와 `learner_fixture` 주체만 연결합니다. 실제 UUID 메모는 정확한 운영 연결표에 소유 관계가 등록되지 않으면 거부합니다. 메모 API 목록은 로그인한 계정의 `owner_id`로 제한하며, 공지 읽기는 로그인한 학생에게 허용합니다.
+**경로 정책:** `aleph.config.json`의 `allowedRoutes`에는 `GET /api/my/notes`, `GET /api/notes/:id`, `GET /notes/:id`만 정확한 서비스·메서드·경로 패턴으로 등록합니다. 판정 계약에는 메모 소유자나 강사 역할 증거가 없으므로 판정기에서 모호한 목록과 쓰기를 허용하지 않습니다. 앱의 메모 추가·수정·삭제 API는 별도로 로그인한 사용자의 ID를 저장·대조하고, 공지 수정 API는 Supabase에서 확인한 `app_metadata.role`을 검사합니다. 브라우저 본문의 `owner_id`·`role`은 권한 근거로 사용하지 않습니다.
 
-현재 `docs/DECIDER_REQUEST.md`의 가명 `subjectId`는 Supabase 사용자 UUID와 직접 비교할 수 없습니다. 운영 연결표에는 엔진이 확인한 가명 주체·기기와 자원 소유 관계를 별도로 등록해야 합니다. 실제 A/B 연결표와 강사 계정이 없어 운영 구역 판정과 강사 수정 실측은 미실행이며, 로컬 가상 시험을 심판의 100점 판정으로 간주하지 않습니다.
+현재 `docs/DECIDER_REQUEST.md`에는 가명 `subjectId`와 메모의 소유자 ID를 연결하는 계약이 없습니다. 따라서 판정기는 소유자를 추측하지 않고, 메모 API가 검증된 Supabase 사용자 ID로 소유권을 다시 검사합니다. 실제 A/B 계정과 강사 계정으로 한 운영 실측은 미실행이며, 로컬 가상 시험을 심판의 100점 판정으로 간주하지 않습니다.
 
 로컬 확인은 `node --test test/stage8.test.mjs`, `npm run decider:test`, `npm run fixture:7` 순서로 수행합니다. 이 시험은 가상 요청이며 실제 A/B 계정의 UI 접근이나 운영 판정기를 증명하지 않습니다. 변경 저장점 뒤 `npm run bundle`로 제출 JSON을 생성합니다.
 

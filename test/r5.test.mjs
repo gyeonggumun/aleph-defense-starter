@@ -49,6 +49,17 @@ test('build identity uses Vercel Git and deployment metadata', () => {
   }));
 });
 
+test('deployment identity accepts exact service-method-path route objects', () => {
+  const allowedRoutes = [
+    { service: 'notes', method: 'GET', pathPattern: '/api/my/notes' },
+    { service: 'notes', method: 'GET', pathPattern: '/api/notes/:id' },
+  ];
+  assert.deepEqual(deploymentIdentity(env, { ...config, allowedRoutes }).allowedRoutes, allowedRoutes);
+  assert.throws(() => deploymentIdentity(env, { ...config, allowedRoutes: [
+    { service: 'notes', method: 'GET', pathPattern: '/api/my/notes', owner: 'caller' },
+  ] }));
+});
+
 test('stage 5 self-check records unauthenticated denial and deployment protections', async () => {
   const originalFetch = globalThis.fetch;
   const requested = [];

@@ -12,67 +12,31 @@ const request = (method, path, route) => ({ schema: 'aleph.decision.v1', request
   method, path, route, queryLength: 0,
   signals: { source: 'none' }, recentEvents: [], stepUp: { verified: false, authAgeSeconds: null } });
 
-test('배정된 메모만 허용하고 다른 주체·자원·공지 수정을 거부', async () => {
-  const own = request('PUT', '/notes/demo', 'PUT /notes/:id');
-  const notice = request('PUT', `/notices/${id}`, 'PUT /notices/:id');
-  assert.equal(resourceZone(own).id, 'note:demo');
-  assert.equal(resourceZone(notice).id, `notice:${id}`);
-  assert.equal((await decide(own)).decision, 'allow');
-  assert.equal((await decide(notice)).decision, 'deny');
-  assert.equal((await decide(request('GET', '/notices', 'GET /notices'))).decision, 'allow');
-  assert.equal((await decide({ ...own, subjectId: 'verified-subject' })).decision, 'deny');
-  assert.equal((await decide({ ...own, deviceId: 'bbbbbbbbbbbbbbbb' })).decision, 'deny');
-  assert.equal((await decide({ ...own, path: `/notes/${id}` })).decision, 'deny');
-  assert.equal((await decide({ ...notice, role: 'instructor' })).decision, 'deny');
-  assert.equal((await decide({ ...own, queryLength: 8 })).decision, 'deny');
-  for (const bad of ['/notes/export', '/notes/export/now', '/notes/unassigned', `/notes/${id}/export`, `/notes/${id}?export=1`]) {
-    assert.equal((await decide(request('GET', bad, 'GET /notes/:id'))).decision, 'deny');
-  }
-  assert.equal((await decide({ ...own, deviceRegistered: false })).reasonCode, 'device_not_registered');
-});
+test('정확한 자기 목록·메모 읽기만 허용하고 모호한 목록과 쓰기는 거부', async () => {
+  const ownList = request('GET', '/api/my/notes', 'GET /api/my/notes');
+  const ownItem = request('GET', `/api/notes/${id}`, 'GET /api/notes/:id');
+  const aliasItem = request('GET', `/notes/${id}`, 'GET /notes/:id');
+  assert.equal(resourceZone(ownList).id, 'notes:collection');
+  assert.equal(resourceZone(ownItem).id, `note:${id}`);
+  assert.equal((await decide(ownList)).decision, 'allow');
+  assert.equal((await decide(ownItem)).decision, 'allow');
+  assert.equal((await decide(aliasItem)).decision, 'allow');
 
-test('서버가 배정한 강사만 정확한 공지를 수정', async () => {
-  const previous = process.env.ALEPH_RESOURCE_BINDINGS;
-  process.env.ALEPH_RESOURCE_BINDINGS = JSON.stringify([{
-    classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'instructor_fixture',
-    deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notices/${id}`,
-    resourceId: `notice:${id}`, permissions: ['PUT'], instructor: true,
-  }]);
-  try {
-    const edit = { ...request('PUT', `/notices/${id}`, 'PUT /notices/:id'),
-      subjectId: 'instructor_fixture' };
-    assert.equal((await decide(edit)).decision, 'allow');
-    assert.equal((await decide({ ...edit, subjectId: 'learner_fixture' })).decision, 'deny');
-  } finally {
-    if (previous === undefined) delete process.env.ALEPH_RESOURCE_BINDINGS;
-    else process.env.ALEPH_RESOURCE_BINDINGS = previous;
-  }
-});
+  for (const requestToDeny of [
+    request('GET', '/api/notes', 'GET /api/notes'),
+    request('GET', '/notes', 'GET /notes'),
+    request('PUT', `/api/notes/${id}`, 'PUT /api/notes/:id'),
+    request('DELETE', `/api/notes/${id}`, 'DELETE /api/notes/:id'),
+    request('PUT', `/api/notices/${id}`, 'PUT /api/notices/:id'),
+    request('GET', '/api/notes/export', 'GET /api/notes/:id'),
+    request('GET', `/api/notes/${id}`, 'GET /notes/:id'),
+    { ...ownList, queryLength: 8 },
+  ]) assert.equal((await decide(requestToDeny)).decision, 'deny');
 
-test('운영 연결표는 연습 연결을 대체하고 주체·범위·기기·경로·소유자가 모두 맞아야 허용', async () => {
-  const previous = process.env.ALEPH_RESOURCE_BINDINGS;
-  process.env.ALEPH_RESOURCE_BINDINGS = JSON.stringify([{
-    classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'verified-subject',
-    deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
-    resourceId: `note:${id}`, ownerSubjectId: 'verified-subject', permissions: ['GET', 'PUT'],
-  }]);
-  try {
-    const own = { ...request('GET', `/notes/${id}`, 'GET /notes/:id'),
-      subjectId: 'verified-subject' };
-    assert.equal((await decide(own)).decision, 'allow');
-    assert.equal((await decide({ ...own, subjectId: 'learner_fixture' })).decision, 'deny');
-    assert.equal((await decide({ ...own, classId: 'other-class' })).decision, 'deny');
-    assert.equal((await decide({ ...own, projectId: 'other-project' })).decision, 'deny');
-    assert.equal((await decide({ ...own, deviceId: 'bbbbbbbbbbbbbbbb' })).decision, 'deny');
-
-    process.env.ALEPH_RESOURCE_BINDINGS = '[]';
-    assert.equal((await decide(own)).decision, 'deny');
-    process.env.ALEPH_RESOURCE_BINDINGS = '{invalid';
-    assert.equal((await decide(own)).decision, 'deny');
-  } finally {
-    if (previous === undefined) delete process.env.ALEPH_RESOURCE_BINDINGS;
-    else process.env.ALEPH_RESOURCE_BINDINGS = previous;
-  }
+  assert.equal((await decide(request('GET', '/api/notices', 'GET /api/notices'))).decision, 'allow');
+  assert.equal((await decide({ ...ownList, deviceRegistered: false })).reasonCode, 'device_not_registered');
+  assert.equal((await decide({ ...ownList, signals: { source: 'judge_fixture', region: 'foreign',
+    network: 'unusual', hour: 3 }, recentEvents: [{ kind: 'risk_signal', ageSeconds: 60, count: 20 }] })).decision, 'step_up');
 });
 
 function response() {

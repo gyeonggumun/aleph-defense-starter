@@ -35,7 +35,13 @@ export function deploymentIdentity(env, config) {
 
 function hasAllowedRoutes(routes) {
   return Array.isArray(routes) && routes.length > 0
-    && routes.every(route => typeof route === 'string' && /^(GET|POST|PUT|PATCH|DELETE) \/[a-z0-9/_:-]+$/iu.test(route));
+    && routes.every(route => typeof route === 'string'
+      ? /^(GET|POST|PUT|PATCH|DELETE) \/[a-z0-9/_:-]+$/iu.test(route)
+      : route && typeof route === 'object' && !Array.isArray(route)
+        && Object.keys(route).sort().join(',') === 'method,pathPattern,service'
+        && /^[a-z0-9_-]{1,64}$/iu.test(route.service)
+        && /^(GET|POST|PUT|PATCH|DELETE)$/u.test(route.method)
+        && /^\/[a-z0-9/_:-]+$/iu.test(route.pathPattern));
 }
 
 function isOriginalApiUrl(value) {

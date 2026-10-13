@@ -171,7 +171,7 @@
       if (!session?.access_token) return;
       notesStatus.textContent = '메모를 불러오는 중입니다.';
       try {
-        const notes = await apiRequest('/api/notes', session);
+        const notes = await apiRequest('/api/my/notes', session);
         if (!Array.isArray(notes)) throw new Error('자료 형식이 맞지 않습니다.');
         notesList.replaceChildren(...notes.map(makeNoteCard));
         notesStatus.textContent = notes.length ? '' : '아직 메모가 없습니다.';

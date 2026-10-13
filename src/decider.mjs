@@ -4,72 +4,41 @@
 
 export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice']);
 
-const ITEM = /^[a-zA-Z0-9_-]{1,128}$/u;
-const PRACTICE_BINDINGS = [
-  ['demo', 'learner_fixture'],
-].map(([id, subjectId]) => ({
-  subjectId, classId: 'class_fixture', projectId: 'project_fixture',
-  deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
-  resourceId: `note:${id}`, ownerSubjectId: subjectId, permissions: ['GET', 'PUT'],
-}));
-
-function resourceBindings() {
-  const raw = typeof process !== 'undefined' ? process.env?.ALEPH_RESOURCE_BINDINGS : undefined;
-  if (raw === undefined) return PRACTICE_BINDINGS;
-  try {
-    const entries = JSON.parse(raw);
-    if (!Array.isArray(entries)) return [];
-    return entries.filter(entry => entry && typeof entry === 'object' && !Array.isArray(entry)
-      && ['subjectId', 'classId', 'projectId', 'deviceId', 'service', 'path', 'resourceId']
-        .every(key => typeof entry[key] === 'string' && entry[key].length > 0)
-      && Array.isArray(entry.permissions) && entry.permissions.length > 0
-      && entry.permissions.every(method => ['GET', 'PUT'].includes(method)));
-  } catch {
-    return [];
-  }
-}
+const ITEM_PATHS = Object.freeze({
+  'GET /api/notes/:id': /^\/api\/notes\/(?!\.{1,2}$)[^/?#%\\\x00-\x1f]+$/u,
+  'GET /notes/:id': /^\/notes\/(?!\.{1,2}$)[^/?#%\\\x00-\x1f]+$/u,
+  'GET /api/notices/:id': /^\/api\/notices\/(?!\.{1,2}$)[^/?#%\\\x00-\x1f]+$/u,
+  'GET /notices/:id': /^\/notices\/(?!\.{1,2}$)[^/?#%\\\x00-\x1f]+$/u,
+});
+const RESERVED_RESOURCES = new Set(['export', 'backup', 'restore', 'admin', 'all', 'upload']);
 
 function resourceAllowed(request, resource) {
   if (!resource || request?.schema !== 'aleph.decision.v1'
+      || request.service !== 'notes' || request.method !== 'GET'
+      || request.queryLength !== 0
       || typeof request.subjectId !== 'string' || !request.subjectId) return false;
-  // Collection reads are filtered by owner in the API; notices are readable by students.
-  if (resource.zone === 'own_notes' || request.method === 'GET'
-      && resource.zone === 'instructor_notice') return true;
-  return resourceBindings().some(entry => entry?.subjectId === request.subjectId
-    && entry.classId === request.classId
-    && entry.projectId === request.projectId
-    && entry.deviceId === request.deviceId
-    && entry.service === request.service
-    && entry.path === request.path && entry.resourceId === resource.id
-    && Array.isArray(entry.permissions) && entry.permissions.includes(request.method)
-    && (resource.zone !== 'own_note' || entry.ownerSubjectId === request.subjectId)
-    && (resource.zone !== 'instructor_notice' || entry.instructor === true));
+  // Every allowed read has an exact path/route pair; the notes API rechecks stored ownership.
+  return ['own_notes', 'own_note', 'instructor_notice'].includes(resource.zone);
 }
 
 // Engine-verified service, method, route, and exact path identify the zone.
 // The authenticated API repeats the owner and instructor checks.
 export function resourceZone(request) {
-  if (request?.service !== 'notes' || typeof request.path !== 'string'
-      || request.queryLength !== 0) return null;
-  if (request.path === '/notes' && request.method === 'GET'
-      && request.route === 'GET /notes') {
+  if (request?.service !== 'notes' || request.method !== 'GET'
+      || typeof request.path !== 'string' || request.queryLength !== 0) return null;
+  if (request.path === '/api/my/notes' && request.route === 'GET /api/my/notes') {
     return { id: 'notes:collection', zone: 'own_notes' };
   }
-  if (request.path === '/notices' && request.method === 'GET'
-      && request.route === 'GET /notices') {
+  if (request.path === '/api/notices' && request.route === 'GET /api/notices') {
     return { id: 'notices:collection', zone: 'instructor_notice' };
   }
-  const segments = request.path.split('/');
-  if (segments.length !== 3 || segments[0] !== '' || !ITEM.test(segments[2])) return null;
-  const id = segments[2];
-  if (id.toLowerCase() === 'export') return null;
-  if (segments[1] === 'notes' && ['GET', 'PUT'].includes(request.method)
-      && request.route === `${request.method} /notes/:id`) {
-    return { id: `note:${id}`, zone: 'own_note' };
-  }
-  if (segments[1] === 'notices' && ['GET', 'PUT'].includes(request.method)
-      && request.route === `${request.method} /notices/:id`) {
-    return { id: `notice:${id}`, zone: 'instructor_notice' };
+  for (const [route, pattern] of Object.entries(ITEM_PATHS)) {
+    if (request.route !== route || !pattern.test(request.path)) continue;
+    const id = request.path.split('/').at(-1);
+    if (RESERVED_RESOURCES.has(id.toLowerCase())) return null;
+    const isNotice = request.path.includes('/notices/');
+    return { id: `${isNotice ? 'notice' : 'note'}:${id}`,
+      zone: isNotice ? 'instructor_notice' : 'own_note' };
   }
   return null;
 }
