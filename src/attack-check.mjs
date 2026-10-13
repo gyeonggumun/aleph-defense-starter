@@ -1,7 +1,7 @@
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 export async function runAttackChecks(config) {
-  if (![5, 6].includes(config.step)) throw new Error('5~6단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
+  if (![5, 6, 7].includes(config.step)) throw new Error('5~7단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try { app = new URL(config.publicAppUrl); } catch {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
@@ -91,5 +91,8 @@ export async function runAttackChecks(config) {
     { attackId: 'auth_proxy_restricts_routes', expected: '인증 중계가 Auth 경로 이외의 요청을 거부',
       observed: authProxyClosed ? '인증 중계가 데이터 경로 요청을 JSON 404로 거부'
         : `인증 중계 외부 경로 거부 확인 실패: HTTP ${authProxyResponse.status}` },
+    ...(config.step >= 7 ? [{ attackId: 'step_up_live_block',
+      expected: '같은 로그인으로 다시 확인하기 전에는 복합 위험 요청에서 자료가 없음',
+      observed: '미실행: 운영 엔진의 같은 로그인 재인증 시각 검증 계약과 실측 요청이 제공되지 않음' }] : []),
   ];
 }
