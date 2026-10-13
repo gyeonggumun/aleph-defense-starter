@@ -1,5 +1,5 @@
 {
-  "step": 9,
+  "step": 10,
   "repoUrl": "https://github.com/gyeonggumun/aleph-defense-starter",
   "publicAppUrl": "https://aleph-defense-starter-ten.vercel.app",
   "sampleMarker": "SAMPLE_NOTE_1",
@@ -27,5 +27,5 @@
     }
   ],
   "originalApiUrl": "https://wypzkqzsgnnzpjcztlbz.supabase.co/rest/v1/vault_notes",
-  "restoreRoute": null
+  "restoreRoute": "https://aleph-defense-starter-ten.vercel.app/api/restore-note"
 }

@@ -1,7 +1,7 @@
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 export async function runAttackChecks(config) {
-  if (![5, 6, 7, 8, 9].includes(config.step)) throw new Error('5~9단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
+  if (![5, 6, 7, 8, 9, 10].includes(config.step)) throw new Error('5~10단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try { app = new URL(config.publicAppUrl); } catch {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
@@ -101,5 +101,8 @@ export async function runAttackChecks(config) {
     ...(config.step >= 7 ? [{ attackId: 'step_up_live_block',
       expected: '같은 로그인으로 다시 확인하기 전에는 복합 위험 요청에서 자료가 없음',
       observed: '미실행: 운영 엔진의 같은 로그인 재인증 시각 검증 계약과 실측 요청이 제공되지 않음' }] : []),
+    ...(config.step >= 10 ? [{ attackId: 'verified_backup_restore',
+      expected: '검증된 사본으로 시험 정책과 B의 메모 한 건만 복구하고 정상·금지 요청을 재시험',
+      observed: '미실행: 침해 전 검증된 정책·메모 사본과 B 소유 메모가 제공되지 않음' }] : []),
   ];
 }
