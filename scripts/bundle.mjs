@@ -87,7 +87,7 @@ try {
     if (!['blocked', 'breached', 'not_run'].includes(attempt.result)
         || (attempt.result === 'not_run') !== (attempt.observed === 'not_run')
         || (attempt.observed !== 'not_run'
-          && !/^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=[A-Z]{3,10}(?:; urlSha256=[a-f0-9]{64})?$/u.test(attempt.observed))) {
+          && !/^HTTP \d{3}; bodyBytes=(?:\d+|null); jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=[A-Z]{3,10}(?:; urlSha256=[a-f0-9]{64})?$/u.test(attempt.observed))) {
       fail('공격 점검 결과는 대조 가능한 HTTP 응답 필드만 쓰고, 보내지 않은 요청은 not_run으로 적어 주세요.');
     }
   }

@@ -34,49 +34,57 @@ export async function runAttackChecks(config) {
   const requestCheck = async ({ attackId, path, method = 'GET', matches }) => {
     const url = new URL(path, app);
     const requestKey = newRequestKey();
+    let response;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         method, redirect: 'error', signal: AbortSignal.timeout(10000),
         headers: { accept: 'application/json' },
         alephEvidence: { caseId: attackId, requestKey },
       });
-      const body = await response.arrayBuffer();
-      const bodyText = new TextDecoder().decode(body);
-      let bodyJson = null;
-      try { bodyJson = JSON.parse(bodyText); } catch {}
-      const jsonArrayLength = Array.isArray(bodyJson) ? bodyJson.length
-        : Array.isArray(bodyJson?.notes) ? bodyJson.notes.length : null;
-      const jsonReady = typeof bodyJson?.ready === 'boolean' ? bodyJson.ready : null;
-      const checkedAt = new Date().toISOString();
-      const urlSha256 = await sha256(url.href);
-      const requestId = requestKey;
-      const fields = [
-        `HTTP ${response.status}`,
-        `bodyBytes=${body.byteLength}`,
-        `jsonArrayLength=${jsonArrayLength ?? 'null'}`,
-        `jsonReady=${jsonReady ?? 'null'}`,
-        `method=${method}`,
-      ];
-      if (urlSha256) fields.push(`urlSha256=${urlSha256}`);
-      const observed = fields.join('; ');
-      const ran = { response, bodyText, bodyJson, checkedAt, attackId, requestId, observed };
-      return { ...ran, result: matches(ran) ? 'blocked' : 'breached' };
     } catch {
       return { response: null, checkedAt: null, attackId, requestId: null,
         observed: 'not_run', result: 'not_run' };
     }
+    let bodyText = '';
+    let bodyReadable = false;
+    try {
+      bodyText = await response.text();
+      bodyReadable = true;
+    } catch {}
+    let bodyJson = null;
+    try { bodyJson = JSON.parse(bodyText); } catch {}
+    const jsonArrayLength = Array.isArray(bodyJson) ? bodyJson.length
+      : Array.isArray(bodyJson?.notes) ? bodyJson.notes.length : null;
+    const jsonReady = typeof bodyJson?.ready === 'boolean' ? bodyJson.ready : null;
+    const checkedAt = new Date().toISOString();
+    const urlSha256 = await sha256(url.href);
+    const requestId = requestKey;
+    const bodyBytes = bodyReadable ? new TextEncoder().encode(bodyText).byteLength : null;
+    const fields = [
+      `HTTP ${response.status}`,
+      `bodyBytes=${bodyBytes ?? 'null'}`,
+      `jsonArrayLength=${jsonArrayLength ?? 'null'}`,
+      `jsonReady=${jsonReady ?? 'null'}`,
+      `method=${method}`,
+    ];
+    if (urlSha256) fields.push(`urlSha256=${urlSha256}`);
+    const observed = fields.join('; ');
+    const ran = { response, bodyText, bodyJson, bodyReadable, checkedAt, attackId, requestId, observed };
+    return { ...ran, result: matches(ran) ? 'blocked' : 'breached' };
   };
   const checks = [
     { attackId: 'anonymous_notes_api', stage: 3, path: '/api/notes',
       expected: '비로그인 목록 요청은 401/403 JSON 오류',
-      matches: r => [401, 403].includes(r.response.status) && typeof r.bodyJson?.error === 'string' },
+      matches: r => r.bodyReadable && [401, 403].includes(r.response.status)
+        && typeof r.bodyJson?.error === 'string' },
     { attackId: 'public_json_empty', stage: 2, path: '/data.json',
       expected: '공개 data.json에 메모가 없음',
-      matches: r => r.response.status === 200 && (Array.isArray(r.bodyJson) ? r.bodyJson.length === 0
+      matches: r => r.bodyReadable && r.response.status === 200
+        && (Array.isArray(r.bodyJson) ? r.bodyJson.length === 0
         : Array.isArray(r.bodyJson?.notes) && r.bodyJson.notes.length === 0) },
     { attackId: 'deployment_identity', stage: 12, path: '/aleph.json',
       expected: `/aleph.json에 ${config.step}단계 정보와 허용 경로가 있음`,
-      matches: r => r.response.status === 200 && r.bodyJson?.step === config.step
+      matches: r => r.bodyReadable && r.response.status === 200 && r.bodyJson?.step === config.step
         && Array.isArray(r.bodyJson?.allowedRoutes) && r.bodyJson.allowedRoutes.length > 0 },
     { attackId: 'security_header', stage: 2, path: '/',
       expected: '첫 화면에 nosniff 또는 CSP 보안 헤더가 있음',
@@ -85,18 +93,20 @@ export async function runAttackChecks(config) {
           || Boolean(r.response.headers.get('content-security-policy'))) },
     { attackId: 'browser_supabase_key_absent', stage: 5, path: '/',
       expected: '첫 화면 응답에 Supabase 공개 키가 없음',
-      matches: r => r.response.status === 200
+      matches: r => r.bodyReadable && r.response.status === 200
         && !/\b(?:sb_publishable|sb_anon)_[A-Za-z0-9_-]+|SUPABASE_(?:ANON|PUBLISHABLE)_KEY\s*=/iu.test(r.bodyText) },
     { attackId: 'auth_proxy_restricts_routes', stage: 5, path: '/api/auth?path=rest%2Fv1%2Fvault_notes',
       expected: '인증 중계가 Auth 경로 이외의 요청을 거부',
-      matches: r => [401, 403, 404].includes(r.response.status)
+      matches: r => r.bodyReadable && [401, 403, 404].includes(r.response.status)
         && !/"(?:title|body|content)"\s*:/u.test(r.bodyText) },
     ...(config.step >= 8 ? [{ attackId: 'anonymous_notices_api', stage: 8, path: '/api/notices',
       expected: '비로그인 공지 요청은 401/403 JSON 오류',
-      matches: r => [401, 403].includes(r.response.status) && typeof r.bodyJson?.error === 'string' }] : []),
+      matches: r => r.bodyReadable && [401, 403].includes(r.response.status)
+        && typeof r.bodyJson?.error === 'string' }] : []),
     ...(config.step >= 12 ? [{ attackId: 'operations_requires_auth', stage: 12, path: '/api/operations',
       expected: '/api/operations는 로그인 전 401 JSON과 요청 ID를 반환',
-      matches: r => r.response.status === 401 && typeof r.bodyJson?.error === 'string' }] : []),
+      matches: r => r.bodyReadable && r.response.status === 401
+        && typeof r.bodyJson?.error === 'string' }] : []),
   ];
   const results = [];
   for (const check of checks) results.push({ ...check, ...(await requestCheck(check)) });

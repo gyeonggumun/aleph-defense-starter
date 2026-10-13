@@ -107,6 +107,9 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
   const originalFetch = globalThis.fetch;
   const requested = [];
   const stage12 = { ...config, step: 12, originalApiUrl: config.originalApiUrl };
+  const textOnly = response => Object.assign(response, {
+    arrayBuffer: async () => { throw new TypeError('arrayBuffer unavailable in isolated runner'); },
+  });
   try {
     globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
@@ -117,23 +120,23 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
       requested.push({ path: parsed.pathname, attackId, requestKey: init.alephEvidence.requestKey });
       const headers = { 'x-vercel-id': `trace-${attackId}` };
       if (parsed.pathname === '/api/notes' || parsed.pathname === '/api/notices') {
-        return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
+        return textOnly(new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
           status: 401, headers: { ...headers, 'content-type': 'application/json' },
-        });
+        }));
       }
-      if (parsed.pathname === '/data.json') return new Response(JSON.stringify({ notes: [] }), { status: 200, headers });
-      if (parsed.pathname === '/aleph.json') return new Response(JSON.stringify({
+      if (parsed.pathname === '/data.json') return textOnly(new Response(JSON.stringify({ notes: [] }), { status: 200, headers }));
+      if (parsed.pathname === '/aleph.json') return textOnly(new Response(JSON.stringify({
         schema: 'aleph.defense.deployment.v1', step: 12, repoUrl: stage12.repoUrl,
         commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
         originalApiUrl: stage12.originalApiUrl, allowedRoutes: stage12.allowedRoutes,
-      }), { status: 200, headers });
-      if (parsed.pathname === '/api/auth') return new Response(JSON.stringify({ error: 'NOT_FOUND' }), {
+      }), { status: 200, headers }));
+      if (parsed.pathname === '/api/auth') return textOnly(new Response(JSON.stringify({ error: 'NOT_FOUND' }), {
         status: 404, headers: { ...headers, 'content-type': 'application/json' },
-      });
-      if (parsed.pathname === '/api/operations') return new Response(JSON.stringify({
+      }));
+      if (parsed.pathname === '/api/operations') return textOnly(new Response(JSON.stringify({
         error: 'UNAUTHORIZED', requestId: 'server-request-id', checkedAt: new Date().toISOString(),
-      }), { status: 401, headers: { ...headers, 'content-type': 'application/json' } });
-      return new Response('ok', { status: 200, headers: { ...headers, 'x-content-type-options': 'nosniff' } });
+      }), { status: 401, headers: { ...headers, 'content-type': 'application/json' } }));
+      return textOnly(new Response('ok', { status: 200, headers: { ...headers, 'x-content-type-options': 'nosniff' } }));
     };
     const results = await runAttackChecks(stage12);
     const requestIds = [
@@ -144,6 +147,8 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
     assert.deepEqual(results.map(result => result.attackId), requestIds);
     assert.deepEqual(requested.map(item => item.attackId), requestIds.filter(id =>
       !['step_up_live_block', 'verified_backup_restore', 'device_approval_live'].includes(id)));
+    assert.ok(results.filter(result => requested.some(item => item.attackId === result.attackId))
+      .every(result => result.result !== 'not_run'));
     assert.equal(new Set(requested.map(item => item.requestKey)).size, requested.length);
     const evidence = getLastCheckEvidence();
     assert.deepEqual(evidence.map(item => item.attackId), requestIds);
