@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#178b8c">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/app-icon-192.png" type="image/png">
-  <title>BYTE BACK | 로그인한 자료실</title>
+  <title>BYTE BACK | 가상 자료실</title>
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
     body { margin: 0; min-height: 100vh; background: #101a28; color: #ecf4ff; }
@@ -33,7 +33,7 @@
 </head>
 <body>
   <main>
-    <div class="eyebrow">BYTE BACK · 3단계 로그인과 메모</div>
+    <div class="eyebrow">BYTE BACK · 안전한 가상 자료실</div>
     <h1>가상 자료실</h1>
     <p>Supabase Auth로 로그인한 뒤 학습용 가상 메모를 관리합니다. 서버가 로그인 토큰을 확인하며, 화면에 보이는 자료는 실습용입니다.</p>
     <p id="offline-status" class="status" role="status" hidden>오프라인입니다. 연결을 확인하기 전에는 보호 자료를 새로 요청할 수 없습니다.</p>
@@ -117,7 +117,7 @@
     });
     window.addEventListener('appinstalled', () => { installButton.hidden = true; });
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js'); });
+      void navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
     const loginForm = document.querySelector('#login-form');
     const sessionPanel = document.querySelector('#session-panel');
