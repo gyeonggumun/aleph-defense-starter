@@ -1,7 +1,7 @@
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 export async function runAttackChecks(config) {
-  if (![5, 6, 7, 8, 9, 10].includes(config.step)) throw new Error('5~10단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
+  if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) throw new Error('5~11단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try { app = new URL(config.publicAppUrl); } catch {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
@@ -104,5 +104,8 @@ export async function runAttackChecks(config) {
     ...(config.step >= 10 ? [{ attackId: 'verified_backup_restore',
       expected: '검증된 사본으로 시험 정책과 B의 메모 한 건만 복구하고 정상·금지 요청을 재시험',
       observed: '미실행: 침해 전 검증된 정책·메모 사본과 B 소유 메모가 제공되지 않음' }] : []),
+    ...(config.step >= 11 ? [{ attackId: 'device_approval_live',
+      expected: '승인 전 자료 없음, 승인된 기기의 WebAuthn 확인 뒤 정상 화면',
+      observed: '미실행: 승인된 실기기 등록과 관리자 승인은 별도 사용자 절차가 필요함' }] : []),
   ];
 }

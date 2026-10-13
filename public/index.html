@@ -55,6 +55,15 @@
       </div>
       <p id="auth-status" class="status" role="status" aria-live="polite"></p>
     </section>
+    <section id="device-panel" class="panel" hidden aria-labelledby="device-heading">
+      <h2 id="device-heading">기기 승인</h2>
+      <p>로그인 뒤 기기 등록을 요청할 수 있습니다. 관리자 승인과 이 기기의 보안 확인이 끝나기 전에는 메모가 열리지 않습니다.</p>
+      <div class="actions">
+        <button id="request-device" type="button">기기 등록 요청</button>
+        <button id="verify-device" class="secondary" type="button">승인된 기기 확인</button>
+      </div>
+      <p id="device-status" class="status" role="status" aria-live="polite">기기 승인이 필요합니다.</p>
+    </section>
     <section id="notes-panel" hidden aria-labelledby="notes-heading">
       <h2 id="notes-heading">가상 메모</h2>
       <div class="panel">
@@ -74,6 +83,7 @@
   </main>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2?bundle';
+    import { startAuthentication, startRegistration } from 'https://esm.sh/@simplewebauthn/browser@14.0.0?bundle';
 
     const supabaseUrl = 'https://wypzkqzsgnnzpjcztlbz.supabase.co';
     const authFetch = async (input, init) => {
@@ -122,6 +132,8 @@
     const loginForm = document.querySelector('#login-form');
     const sessionPanel = document.querySelector('#session-panel');
     const notesPanel = document.querySelector('#notes-panel');
+    const devicePanel = document.querySelector('#device-panel');
+    const deviceStatus = document.querySelector('#device-status');
     const authStatus = document.querySelector('#auth-status');
     const notesStatus = document.querySelector('#notes-status');
     const notesList = document.querySelector('#notes');
@@ -132,23 +144,54 @@
     const saveButton = document.querySelector('#save-note');
     const cancelButton = document.querySelector('#cancel-edit');
     let currentSession = null;
+    let deviceGrant = null;
+    let deviceGrantExpiresAt = 0;
+
+    function deviceReady() {
+      if (deviceGrant && Date.now() >= deviceGrantExpiresAt) {
+        deviceGrant = null;
+        notesPanel.hidden = true;
+        notesList.replaceChildren();
+        deviceStatus.textContent = '기기 확인이 만료되었습니다. 다시 확인해 주세요.';
+      }
+      return Boolean(deviceGrant);
+    }
 
     function showSession(session) {
+      if (!session?.access_token || currentSession?.user?.id !== session.user?.id) {
+        deviceGrant = null;
+        deviceGrantExpiresAt = 0;
+      }
       currentSession = session;
       const signedIn = Boolean(session?.access_token);
       loginForm.hidden = signedIn;
       sessionPanel.hidden = !signedIn;
-      notesPanel.hidden = !signedIn;
+      devicePanel.hidden = !signedIn;
+      notesPanel.hidden = !signedIn || !deviceReady();
       document.querySelector('#user-status').textContent = signedIn
         ? `로그인됨: ${session.user?.email ?? '인증된 사용자'}` : '';
-      if (!signedIn) {
+      if (!signedIn || !deviceReady()) {
         notesList.replaceChildren();
         clearEditor();
       }
     }
 
+    async function deviceRequest(action, session, payload = {}) {
+      const response = await fetch(`/api/device?action=${encodeURIComponent(action)}`, {
+        method: 'POST', cache: 'no-store',
+        headers: { Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || result.error || `HTTP ${response.status}`);
+      return result;
+    }
+
     async function apiRequest(path, session, method = 'GET', payload) {
+      if (!deviceReady()) throw new Error('승인된 기기 확인이 필요합니다.');
       const headers = { Authorization: `Bearer ${session.access_token}` };
+      headers['X-Device-Grant'] = deviceGrant;
       const options = { method, headers, cache: 'no-store' };
       if (payload !== undefined) {
         headers['Content-Type'] = 'application/json';
@@ -157,6 +200,12 @@
       const response = await fetch(path, options);
       let result = null;
       try { result = await response.json(); } catch {}
+      if (result?.error === 'DEVICE_NOT_APPROVED') {
+        deviceGrant = null;
+        deviceGrantExpiresAt = 0;
+        showSession(currentSession);
+        deviceStatus.textContent = '기기 승인이 없거나 철회되었습니다. 다시 확인해 주세요.';
+      }
       if (!response.ok) throw new Error(result?.message || result?.error || `HTTP ${response.status}`);
       return result;
     }
@@ -201,7 +250,7 @@
     }
 
     async function loadNotes(session) {
-      if (!session?.access_token) return;
+      if (!session?.access_token || !deviceReady()) return;
       notesStatus.textContent = '메모를 불러오는 중입니다.';
       try {
         const notes = await apiRequest('/api/my/notes', session);
@@ -240,6 +289,36 @@
       } catch (error) { authStatus.textContent = `로그아웃 실패: ${error.message}`; }
     });
 
+    document.querySelector('#request-device').addEventListener('click', async () => {
+      if (!currentSession) return;
+      deviceStatus.textContent = '기기 등록 요청을 준비하고 있습니다.';
+      try {
+        const { requestId, options } = await deviceRequest('register-options', currentSession);
+        const response = await startRegistration({ optionsJSON: options });
+        const result = await deviceRequest('register-verify', currentSession, { requestId, response });
+        deviceStatus.textContent = result.message;
+      } catch (error) { deviceStatus.textContent = `등록 요청 실패: ${error.message}`; }
+    });
+
+    document.querySelector('#verify-device').addEventListener('click', async () => {
+      if (!currentSession) return;
+      deviceStatus.textContent = '서버에서 승인된 기기를 확인하고 있습니다.';
+      try {
+        const session = currentSession;
+        const { requestId, options } = await deviceRequest('authenticate-options', session);
+        const response = await startAuthentication({ optionsJSON: options });
+        const result = await deviceRequest('authenticate-verify', session, { requestId, response });
+        if (currentSession?.user?.id !== session.user?.id || !result.approved || !result.grant) return;
+        deviceGrant = result.grant;
+        deviceGrantExpiresAt = Date.now() + result.expiresInSeconds * 1000;
+        window.setTimeout(() => { if (Date.now() >= deviceGrantExpiresAt) showSession(currentSession); },
+          result.expiresInSeconds * 1000 + 100);
+        notesPanel.hidden = false;
+        deviceStatus.textContent = '서버가 승인된 기기를 확인했습니다. 메모를 열었습니다.';
+        await loadNotes(session);
+      } catch (error) { deviceStatus.textContent = `기기 확인 실패: ${error.message}`; }
+    });
+
     noteForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!currentSession) return;
@@ -257,12 +336,10 @@
 
     supabase.auth.onAuthStateChange((_event, session) => {
       showSession(session);
-      if (session) window.setTimeout(() => void loadNotes(session), 0);
     });
     const { data, error } = await supabase.auth.getSession();
     if (error) authStatus.textContent = `로그인 상태를 읽지 못했습니다: ${error.message}`;
     showSession(data?.session ?? null);
-    if (data?.session) await loadNotes(data.session);
   </script>
 </body>
 </html>

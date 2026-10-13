@@ -1,5 +1,5 @@
 {
-  "step": 10,
+  "step": 11,
   "repoUrl": "https://github.com/gyeonggumun/aleph-defense-starter",
   "publicAppUrl": "https://aleph-defense-starter-ten.vercel.app",
   "sampleMarker": "SAMPLE_NOTE_1",
@@ -24,6 +24,11 @@
       "service": "notes",
       "method": "GET",
       "pathPattern": "/notes/:id"
+    },
+    {
+      "service": "device",
+      "method": "POST",
+      "pathPattern": "/api/device"
     }
   ],
   "originalApiUrl": "https://wypzkqzsgnnzpjcztlbz.supabase.co/rest/v1/vault_notes",

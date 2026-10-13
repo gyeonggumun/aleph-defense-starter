@@ -164,15 +164,23 @@ Vercel `notes` 서비스의 `POST /api/restore-note`는 `aleph.config.json`의 `
 
 로컬에서 `node --test test/stage10.test.mjs`는 사본 해시 오류 중단, 시험 정책의 notes 범위 갱신, B 신원·해시 확인, 다른 메모 보존을 가상 데이터로 검사합니다. 이 시험은 없는 사전 백업이나 실제 복원을 증명하지 않습니다.
 
-## 11단계 준비 · 설치형 접속 화면
+## 11단계 · 설치형 화면과 기기 승인
 
 `public/manifest.webmanifest`와 192·512px 아이콘을 추가해 기존 배포 주소를 홈 화면 앱으로 열 수 있게 했습니다. `public/sw.js`는 오프라인 안내 페이지만 저장합니다. 보호 자료·인증 응답·기기 승인 상태는 캐시에 저장하지 않으며, 오프라인에서는 자료실 대신 안내 화면이 나옵니다. 화면에도 설치 표시가 기기 승인을 뜻하지 않는다고 적었습니다.
 
-Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 저장 항목을 제거합니다. 새로고침 후에는 다시 로그인해야 할 수 있습니다. 로그인·메모 API의 기존 서버 권한 검사는 유지합니다.
+Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 저장 항목을 제거합니다. 새로고침 후에는 다시 로그인해야 할 수 있습니다. 로그인·소유자·강사 권한 검사는 유지합니다.
 
-**승인 기능 미완료:** 운영 엔진이 검증한 기기 승인 요청·상태를 웹 서버로 전달하는 계약이 제공되지 않았습니다. 승인 요청·결과 UI, 서버의 기기 승인 확인, 승인 전 자료 차단은 아직 구현하거나 운영 검증하지 않았습니다. 따라서 `aleph.config.json`은 10단계로 유지하고 이 변경을 11단계 저장점이나 제출 완료로 간주하지 않습니다.
+로그인 후 기기 등록 요청 버튼은 WebAuthn 보안 장치의 공개 키를 **승인 대기**로 저장할 뿐 자료 권한을 주지 않습니다. 서버가 기기 바인딩과 사용자 확인을 검증하고, 관리자가 별도로 승인한 자격 증명만 다음 확인에 사용합니다. 서버는 승인된 기기의 새 WebAuthn 서명을 검증한 뒤 5분짜리 자료 접근 증명을 발급합니다. 이 증명은 화면 메모리에만 두고 저장소·서비스 워커 캐시·URL에는 넣지 않습니다. 메모·공지·복원 API는 로그인과 서버 승인 기록을 매 요청 확인하며, 증명이 없거나 철회되었으면 JSON `403 DEVICE_NOT_APPROVED`를 반환합니다. 설치 표시와 버튼 클릭은 승인 결과가 아닙니다.
 
-확인 순서: `node scripts/build-public.mjs --local`로 정적 파일을 확인하고, 배포 후 `/manifest.webmanifest`·아이콘·오프라인 안내가 열리는지 봅니다. 기존 메모 API의 비로그인 거부와 로그인 후 정상 동작은 별도로 확인합니다.
+`sql/step11-device-approval.sql`은 `device_credentials`와 일회용 `device_challenges`를 만들고 두 테이블의 anon·authenticated 직접 권한을 회수합니다. 학습 DB에 적용했고 두 테이블의 RLS가 켜져 있으며 anon·authenticated의 SELECT가 없고 service_role의 SELECT가 있음을 확인했습니다. 관리자 승인 전에는 기존 사용자도 자료를 볼 수 없게 되는 것이 의도한 기본 거부 동작입니다. 기기 승인 절차는 다음과 같습니다.
+
+1. 배포 화면에서 로그인하고 **기기 등록 요청**을 눌러 이 기기의 보안 장치 확인을 마칩니다. 화면은 승인 대기를 표시하며 메모는 계속 숨깁니다.
+2. 관리자는 Supabase SQL Editor에서 `select credential_id, owner_id, status, created_at from public.device_credentials where status = 'pending' order by created_at;`로 대기 기록을 확인합니다. 사용자와 기기를 별도 경로로 확인한 뒤 해당 한 건만 `update public.device_credentials set status = 'approved' where credential_id = '<확인한 ID>' and owner_id = '<확인한 사용자 UUID>' and status = 'pending' returning credential_id, status;`로 승인합니다. 사용자 본문·개인키는 SQL 결과에 없습니다.
+3. 사용자는 **승인된 기기 확인**을 눌러 보안 장치로 서명합니다. 서버의 검증이 성공해야 메모 영역과 기존 CRUD 화면이 열립니다. 승인을 취소할 때는 관리자가 해당 기록을 `revoked`로 바꾸면 새 API 요청이 거부됩니다.
+
+운영 판정 엔진의 `deviceRegistered` 계약을 이 웹 승인 DB에 연결하는 별도 계약은 제공되지 않았습니다. 웹 자료 API의 승인 검증과 엔진 판정은 각각 독립적으로 유지하며, 엔진의 실제 승인 확인까지 시험했다고 주장하지 않습니다. 동기화된 다중 기기 패스키는 기기 바인딩 보증이 약하므로 등록을 거부합니다.
+
+확인 순서: `node --test test/stage11-device.test.mjs`와 `node scripts/build-public.mjs --local`을 실행합니다. 배포 후 `/manifest.webmanifest`가 열리는지, 로그인 전 자료가 없는지, 로그인만 한 `/api/my/notes` 요청이 `403 DEVICE_NOT_APPROVED`인지, 대기 상태 화면에 자료가 없는지, 관리자 승인과 기기 확인 뒤 자신의 메모 CRUD가 되는지 직접 확인합니다. 다른 기기·승인 취소 뒤의 동일 API는 거부되어야 합니다. 실제 기기 등록·관리자 승인·배포 후 화면 시험은 수행한 경우에만 완료로 기록합니다.
 
 ## 시작 틀의 자동 처리
 
