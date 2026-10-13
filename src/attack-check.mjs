@@ -1,7 +1,7 @@
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 export async function runAttackChecks(config) {
-  if (![5, 6, 7, 8, 9, 10, 11].includes(config.step)) throw new Error('5~11단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
+  if (![5, 6, 7, 8, 9, 10, 11, 12].includes(config.step)) throw new Error('5~12단계 인증 API 확인을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try { app = new URL(config.publicAppUrl); } catch {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
@@ -12,13 +12,14 @@ export async function runAttackChecks(config) {
   }
 
   const options = { redirect: 'error', signal: AbortSignal.timeout(10000) };
-  const [apiResponse, publicResponse, identityResponse, homeResponse, authProxyResponse, noticesResponse] = await Promise.all([
+  const [apiResponse, publicResponse, identityResponse, homeResponse, authProxyResponse, noticesResponse, operationsResponse] = await Promise.all([
     fetch(new URL('/api/notes', app), options),
     fetch(new URL('/data.json', app), options),
     fetch(new URL('/aleph.json', app), options),
     fetch(new URL('/', app), options),
     fetch(new URL('/api/auth?path=rest%2Fv1%2Fvault_notes', app), { ...options, method: 'GET' }),
     ...(config.step >= 8 ? [fetch(new URL('/api/notices', app), options)] : [Promise.resolve(null)]),
+    ...(config.step >= 12 ? [fetch(new URL('/api/operations', app), options)] : [Promise.resolve(null)]),
   ]);
   let apiErrorJson = false;
   if ([401, 403].includes(apiResponse.status)
@@ -73,6 +74,17 @@ export async function runAttackChecks(config) {
     } catch {}
   }
 
+  let operationsAuthRequired = false;
+  if (config.step >= 12 && operationsResponse
+      && operationsResponse.status === 401
+      && /application\/(?:[a-z.+-]*\+)?json/iu.test(operationsResponse.headers.get('content-type') ?? '')) {
+    try {
+      const result = await operationsResponse.json();
+      operationsAuthRequired = result?.error === 'UNAUTHORIZED'
+        && typeof result?.requestId === 'string' && typeof result?.checkedAt === 'string';
+    } catch {}
+  }
+
   return [
     { attackId: 'anonymous_notes_api', expected: '비로그인 목록 요청은 401/403 JSON 오류',
       observed: apiErrorJson ? `비로그인 요청 거부: HTTP ${apiResponse.status}, JSON 오류 문구 확인`
@@ -107,5 +119,9 @@ export async function runAttackChecks(config) {
     ...(config.step >= 11 ? [{ attackId: 'device_approval_live',
       expected: '승인 전 자료 없음, 승인된 기기의 WebAuthn 확인 뒤 정상 화면',
       observed: '미실행: 승인된 실기기 등록과 관리자 승인은 별도 사용자 절차가 필요함' }] : []),
+    ...(config.step >= 12 ? [{ attackId: 'operations_requires_auth',
+      expected: '/api/operations는 로그인 전 401 JSON과 요청 ID를 반환',
+      observed: operationsAuthRequired ? '작전실 API가 비로그인 요청을 JSON 401로 거부하고 요청 ID를 반환'
+        : `작전실 API 비로그인 거부 확인 실패: HTTP ${operationsResponse?.status ?? '응답 없음'}` }] : []),
   ];
 }

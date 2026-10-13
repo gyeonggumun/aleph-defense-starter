@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node scripts/build-public.mjs",
     "test:r5": "node --test test/r5.test.mjs",
+    "test:stage12": "node --test test/stage12-operations.test.mjs",
     "test:package": "node --test test/package-starter.test.mjs",
     "bundle": "node scripts/bundle.mjs",
     "decider:test": "node scripts/decider-test.mjs && node --test test/decider-isolated.test.mjs",

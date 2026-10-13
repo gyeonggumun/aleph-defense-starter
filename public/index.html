@@ -29,6 +29,13 @@
     li strong { display: block; font-size: 18px; margin-bottom: 5px; }
     li p { margin: 8px 0; white-space: pre-wrap; }
     .status { min-height: 1.5em; color: #8ad8df; }
+    .ops-table-wrap { overflow-x: auto; }
+    .ops-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .ops-table th, .ops-table td { padding: 8px; border-bottom: 1px solid #51667c; text-align: left; vertical-align: top; }
+    .ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .ops-card { padding: 12px; border: 1px solid #51667c; border-radius: 10px; overflow-wrap: anywhere; }
+    .ops-card h3 { margin: 0 0 8px; font-size: 16px; }
+    .ops-card p { margin: 4px 0; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -79,6 +86,19 @@
       </div>
       <p id="notes-status" class="status" role="status" aria-live="polite"></p>
       <ul id="notes" aria-live="polite"></ul>
+    </section>
+    <section id="operations-panel" class="panel" hidden aria-labelledby="operations-heading">
+      <h2 id="operations-heading">탈환 작전실</h2>
+      <p>서버가 반환한 요약입니다. 판정기·탐지의 가상 입력 결과와 운영 엔진의 미실행 상태를 구분합니다. 메모 본문과 기기 식별자는 표시하지 않습니다.</p>
+      <button id="load-operations" class="secondary" type="button">서버 상태 조회</button>
+      <p id="operations-status" class="status" role="status" aria-live="polite"></p>
+      <div id="operations-summary" class="ops-grid"></div>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead><tr><th>영역</th><th>시험</th><th>기대</th><th>실제 결과</th><th>요청 ID</th><th>확인 시각 (UTC)</th><th>출처</th></tr></thead>
+          <tbody id="operations-records"></tbody>
+        </table>
+      </div>
     </section>
   </main>
   <script type="module">
@@ -132,6 +152,10 @@
     const loginForm = document.querySelector('#login-form');
     const sessionPanel = document.querySelector('#session-panel');
     const notesPanel = document.querySelector('#notes-panel');
+    const operationsPanel = document.querySelector('#operations-panel');
+    const operationsStatus = document.querySelector('#operations-status');
+    const operationsSummary = document.querySelector('#operations-summary');
+    const operationsRecords = document.querySelector('#operations-records');
     const devicePanel = document.querySelector('#device-panel');
     const deviceStatus = document.querySelector('#device-status');
     const authStatus = document.querySelector('#auth-status');
@@ -151,7 +175,10 @@
       if (deviceGrant && Date.now() >= deviceGrantExpiresAt) {
         deviceGrant = null;
         notesPanel.hidden = true;
+        operationsPanel.hidden = true;
         notesList.replaceChildren();
+        operationsSummary.replaceChildren();
+        operationsRecords.replaceChildren();
         deviceStatus.textContent = '기기 확인이 만료되었습니다. 다시 확인해 주세요.';
       }
       return Boolean(deviceGrant);
@@ -168,10 +195,13 @@
       sessionPanel.hidden = !signedIn;
       devicePanel.hidden = !signedIn;
       notesPanel.hidden = !signedIn || !deviceReady();
+      operationsPanel.hidden = !signedIn || !deviceReady();
       document.querySelector('#user-status').textContent = signedIn
         ? `로그인됨: ${session.user?.email ?? '인증된 사용자'}` : '';
       if (!signedIn || !deviceReady()) {
         notesList.replaceChildren();
+        operationsSummary.replaceChildren();
+        operationsRecords.replaceChildren();
         clearEditor();
       }
     }
@@ -262,6 +292,69 @@
       }
     }
 
+    function addOpsCard(title, lines) {
+      const card = document.createElement('article');
+      const heading = document.createElement('h3');
+      heading.textContent = title;
+      card.className = 'ops-card';
+      card.append(heading);
+      for (const line of lines) {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = line;
+        card.append(paragraph);
+      }
+      operationsSummary.append(card);
+    }
+
+    function renderOperations(result) {
+      operationsSummary.replaceChildren();
+      operationsRecords.replaceChildren();
+      addOpsCard('배포·판정기', [
+        `단계 ${result.deployment?.step ?? '확인 불가'} · 커밋 ${result.deployment?.commit ?? '확인 불가'}`,
+        `규칙 ${result.decider?.rules?.length ?? 0}개: ${(result.decider?.rules ?? []).join(', ')}`,
+        `ALEPH SDP 엔진 실시간 감사 결과: ${result.decider?.engineRuntime === 'unverified' ? '미실행' : '확인됨'}`,
+      ]);
+      addOpsCard('탐지', [
+        `운영 사건 스트림: ${result.detection?.liveEventFeed === 'not_connected' ? '미연결·미실행' : '연결됨'}`,
+        '121건 가상 사건 결과는 아래 표에 별도 표시됩니다.',
+        `41종 총공세: ${result.assaultSuite?.status === 'not_run' ? '미실행' : result.assaultSuite?.status ?? '확인 불가'} (${result.assaultSuite?.executedInThisReport ?? 0}/${result.assaultSuite?.total ?? 41})`,
+      ]);
+      const deviceStatus = result.revocation?.deviceStatus ?? {};
+      addOpsCard('기기·회수', [
+        `승인 ${deviceStatus.approved ?? 0} · 대기 ${deviceStatus.pending ?? 0} · 회수 ${deviceStatus.revoked ?? 0}`,
+        `실제 회수: ${result.revocation?.actualRevocation === 'not_executed' ? '미실행' : '확인됨'}`,
+      ]);
+      addOpsCard('복구', [
+        `정책 사본: ${result.restore?.policySnapshot?.status === 'unavailable' ? '미실행·검증 사본 없음' : result.restore?.policySnapshot?.status ?? '확인 불가'}`,
+        `메모 사본: ${result.restore?.noteBackup?.status ?? '확인 불가'}`,
+        `배포 버전: ${result.restore?.version ?? '확인 불가'}`,
+        `내 메모 수: ${result.dataSummary?.ownNoteCount ?? '확인 불가'} (본문 미포함)`,
+      ]);
+      for (const record of result.records ?? []) {
+        const row = document.createElement('tr');
+        for (const value of [record.area, record.test, record.expected,
+          typeof record.actual === 'object' ? JSON.stringify(record.actual) : record.actual,
+          record.requestId, record.checkedAt, record.source]) {
+          const cell = document.createElement('td');
+          cell.textContent = value ?? '—';
+          row.append(cell);
+        }
+        operationsRecords.append(row);
+      }
+      operationsStatus.textContent = `실제 API 응답 확인 · 요청 ${result.requestId} · ${result.checkedAt} (UTC)`;
+    }
+
+    document.querySelector('#load-operations').addEventListener('click', async () => {
+      if (!currentSession || !deviceReady()) return;
+      operationsStatus.textContent = '서버 상태를 확인하고 있습니다.';
+      try {
+        const result = await apiRequest('/api/operations', currentSession);
+        renderOperations(result);
+      } catch (error) {
+        operationsStatus.textContent = `상태를 불러오지 못했습니다: ${error.message}`;
+      }
+    });
+
     function clearEditor() {
       noteForm.reset();
       noteId.value = '';
@@ -314,6 +407,7 @@
         window.setTimeout(() => { if (Date.now() >= deviceGrantExpiresAt) showSession(currentSession); },
           result.expiresInSeconds * 1000 + 100);
         notesPanel.hidden = false;
+        operationsPanel.hidden = false;
         deviceStatus.textContent = '서버가 승인된 기기를 확인했습니다. 메모를 열었습니다.';
         await loadNotes(session);
       } catch (error) { deviceStatus.textContent = `기기 확인 실패: ${error.message}`; }

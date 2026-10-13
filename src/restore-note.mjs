@@ -34,6 +34,19 @@ function checkedBackup(raw, pinnedHash, bUserId) {
   return note;
 }
 
+// Status only: never expose the backup ID, owner, title, or contents to a dashboard.
+export function noteBackupStatus(settings = process.env) {
+  const raw = settings.RESTORE_NOTE_BACKUP_JSON;
+  const pinnedHash = settings.RESTORE_NOTE_BACKUP_SHA256;
+  const bUserId = settings.RESTORE_B_USER_ID;
+  if (raw === undefined && pinnedHash === undefined && bUserId === undefined) {
+    return { status: 'unavailable', reasonCode: 'VERIFIED_BACKUP_UNAVAILABLE' };
+  }
+  return checkedBackup(raw, pinnedHash, bUserId)
+    ? { status: 'verified', reasonCode: 'PINNED_HASH_AND_OWNER_CHECKED' }
+    : { status: 'invalid', reasonCode: 'BACKUP_VALIDATION_FAILED' };
+}
+
 // The backup must have been captured and its digest pinned before the incident.
 // An absent or altered backup cannot authorize a write.
 export async function handleRestoreNote(request, response, options = {}) {

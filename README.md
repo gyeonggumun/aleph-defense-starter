@@ -182,16 +182,39 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 
 확인 순서: `node --test test/stage11-device.test.mjs`와 `node scripts/build-public.mjs --local`을 실행합니다. 배포 후 `/manifest.webmanifest`가 열리는지, 로그인 전 자료가 없는지, 로그인만 한 `/api/my/notes` 요청이 `403 DEVICE_NOT_APPROVED`인지, 대기 상태 화면에 자료가 없는지, 관리자 승인과 기기 확인 뒤 자신의 메모 CRUD가 되는지 직접 확인합니다. 다른 기기·승인 취소 뒤의 동일 API는 거부되어야 합니다. 실제 기기 등록·관리자 승인·배포 후 화면 시험은 수행한 경우에만 완료로 기록합니다.
 
+## 12단계 저장점 · 탈환 작전실
+
+### 작전실과 결과의 출처
+
+로그인하고 서버가 발급한 5분짜리 승인 기기 증명이 있을 때 자료실 아래 **탈환 작전실**에서 `/api/operations`의 실제 JSON 응답을 조회합니다. 응답은 메모 본문·메모 ID·소유자 ID·WebAuthn 자격 증명을 포함하지 않습니다. 현재 사용자 메모 개수와 기기 상태는 서버 DB에서 다시 조회합니다. API 응답에 요청 ID와 UTC 확인 시각을 붙여 표에 그대로 표시합니다.
+
+작전실은 `src/decider.mjs`의 규칙 ID와 학생 판정기의 합성 정상/미등록 요청 결과, `src/detect.mjs`의 합성 121건 결과를 구분해 보여 줍니다. 이 합성 입력은 운영 사용자나 운영 사건이 아닙니다. ALEPH SDP 엔진의 감사 기록 스트림은 연결되어 있지 않으므로 과거 엔진 판정과 실제 탐지 사건은 **미실행**입니다. 탐지의 `propose_revocation`은 제안일 뿐이며, 이 화면이나 API는 실제 기기 권한을 바꾸지 않습니다.
+
+복구 카드에는 배포 커밋, 메모 백업의 해시·소유자 검증 상태, 정책 사본 상태를 표시합니다. 정책 사본과 사전 검증 메모 사본이 없으면 `unavailable`/미실행으로 보입니다. 백업 본문, ID, 소유자 및 해시는 브라우저로 보내지 않습니다. 실행 가능한 1~11단계 증거 행렬과 기록 절차는 [docs/OPERATIONAL-EVIDENCE.md](docs/OPERATIONAL-EVIDENCE.md)에 있습니다. 현재 미실행으로 표시된 행이나 심판의 **41종 공격**은 성공으로 계산하지 않습니다.
+
+### 설치·실행·중지·복구
+
+학생이 만든 판정기는 `src/decider.mjs`, 탐지 규칙은 `src/detect.mjs`, 브라우저 앱은 `public/`, 서버 API는 `api/`에 있습니다. 로그인 검증, Supabase 데이터베이스·배포, 앱 요청 중계와 실제 보호 요청 실행은 제공된 **ALEPH SDP 엔진/호스팅 환경**의 역할입니다. 엔진 요청 계약은 [docs/DECIDER_REQUEST.md](docs/DECIDER_REQUEST.md)에 기록했으며, 엔진 비밀값이나 소스는 이 저장소에 넣지 않았습니다.
+
+1. 개발 의존성을 설치하려면 저장소 루트에서 `npm ci`를 실행합니다. `node --version`은 `>=22`여야 합니다.
+2. 판정기·탐지기의 로컬 합성 시험은 `npm run decider:test`, `npm run fixture:7`, `npm run detect:test`로 실행합니다. XDR 합성 경보는 `npm run xdr:run -- brute-force` 또는 `npm run xdr:run -- web-injection`으로 확인합니다. 결과는 실제 운영 엔진의 판정이 아닙니다.
+3. 정적 화면만 만들 때는 `node scripts/build-public.mjs --local`을 실행하고 `public/`을 확인합니다. 이는 서버 함수, 로그인, DB 또는 운영 배포를 시작하지 않습니다. 전체 로컬 API를 시험하려면 연결된 Vercel 프로젝트의 환경 설정이 필요하며 `npx vercel dev`로 실행합니다. 서버 키는 Vercel 환경 변수에서만 읽고 소스·브라우저·Git에 복사하지 않습니다.
+4. 배포 앱은 [설정된 자료실 주소](https://aleph-defense-starter-ten.vercel.app)에서 열 수 있습니다. 별도 접속 프로그램은 없습니다. 홈 화면 설치는 선택 사항이며 기기 승인이 아닙니다. 로그인 후 기기 등록 대기, 관리자의 별도 승인, 보안 장치 확인이 모두 끝나야 자료실과 작전실이 열립니다.
+5. 로컬 Vercel 서버는 실행 터미널에서 `Ctrl+C`를 눌러 중지합니다. 웹 앱은 탭을 닫거나 로그아웃합니다. 로그아웃·승인 만료·철회 뒤 브라우저 화면은 보호 자료를 비웁니다.
+6. 되돌릴 때 먼저 `git status`와 `git diff`를 확인한 뒤 단계 커밋을 `git revert <12단계-커밋>`으로 되돌립니다. `reset --hard`는 쓰지 않습니다. DB 행과 감사 기록은 Git 되돌리기에 포함되지 않습니다. 운영 정책은 사전 고정 SHA-256으로 검증한 별도 사본이 있을 때만 `node scripts/recover-policy.mjs preview <사본.json> <정책.trial.json> <사전기록-SHA256>`으로 범위를 미리 보고, 확인 후 `apply`할 수 있습니다. 현재 검증된 정책 사본이 없어 실제 정책 복구는 미실행입니다. 비공개 메모 복원도 서버에 검증된 사본이 준비되고 B 계정이 확인되기 전에는 하지 않습니다.
+
+저장점 전 확인은 `node --test test/stage12-operations.test.mjs`와 정적 빌드로 수행합니다. 커밋 후 `npm run bundle`은 실제 배포의 비로그인 API·정적 파일·배포 식별자·보안 헤더를 점검합니다. 이 자기 점검이 41종 총공세나 A/B 정상·금지 요청을 대신하지 않습니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 5단계부터는 쿼리·인증 정보가 없는 HTTPS `originalApiUrl`도 함께 기록합니다. 필수 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
 
-`aleph.config.json`의 `repoUrl`과 `publicAppUrl`은 이전 제출 묶음 방식의 자리표시자입니다. 1단계에서는 학생이 편집하지 않습니다. 2단계 이후 코딩 도구가 필요한 설정과 보호 기능을 단계별로 작성합니다. `npm run bundle`과 `bundle-notes.json`도 1단계의 세 걸음에는 포함되지 않습니다.
+`aleph.config.json`은 이 저장소의 현재 공개 GitHub 주소와 Vercel 배포 주소를 가리킵니다. 학생은 실제 주소·원본 API·발급자 정보를 유지하고 서버 비밀값을 이 파일에 넣지 않습니다. `npm run bundle`은 완료된 변경을 커밋한 뒤 실제 배포의 공개 점검을 포함해 실행합니다.
 
 로컬에서 가상 화면만 확인할 때는 `npm run build -- --local`을 사용합니다. 로컬 실행은 Vercel 배포나 심판 접수를 증명하지 않습니다. 현재 `src/attack-check.mjs`는 실제 배포의 익명 `/api/notes` JSON 거부, 빈 `/data.json`, `/aleph.json`의 현재 단계 정보, 첫 화면 보안 헤더를 확인합니다. 이 점검은 A/B 계정의 소유자 접근 검사나 원본 Data API의 anon-key 접근을 수행하지 않습니다.
 
 ## 다음 단계의 코딩 도구에 전달할 규칙
 
-[AGENTS.md](AGENTS.md)를 먼저 읽히고 한 번에 한 제작 단위만 요청하세요. 2단계부터는 자료 보호를 구현할 때 `public/data.json`을 복사하는 1단계 빌드 흐름도 함께 바꿔야 합니다. 3단계 이후의 로그인, 허용 경로, 5단계의 원본 API 주소, 6단계 이후 정책 규칙은 해당 단계 원고와 계약에 맞춰 추가합니다. 비밀번호·토큰·서버 전용 키·실제 학생 기록을 코드, Git, 제출 묶음에 넣지 않습니다.
+[AGENTS.md](AGENTS.md)를 먼저 읽고 이번 요청의 단계만 바꿉니다. 데이터 보호·로그인·허용 경로·정책 변경은 제공된 계약을 따릅니다. 비밀번호·토큰·서버 전용 키·실제 학생 기록을 코드, Git, 브라우저, 로그, 작전실 표에 넣지 않습니다.
 
 `src/decider.mjs`와 `src/detect.mjs`의 로컬 시험은 반 엔진이나 운영 심판의 결과가 아닙니다. 1단계 이후 제출 묶음 계약 `aleph.defense.submission.v2`는 `scripts/bundle.mjs`에 남아 있으며, 코딩 도구가 해당 단계의 최신 배포 주소와 Git 원격을 맞춘 뒤 사용합니다.
