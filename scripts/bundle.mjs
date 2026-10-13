@@ -69,7 +69,7 @@ try {
     fail('bundle-notes.json의 explanation에 이번 단계에서 한 일을 세 줄로 적어 주세요.');
   }
   const checkerUrl = pathToFileURL(join(root, 'src', 'attack-check.mjs'));
-  const { runAttackChecks } = await import(checkerUrl.href);
+  const { getLastCheckEvidence, runAttackChecks } = await import(checkerUrl.href);
   if (typeof runAttackChecks !== 'function') fail('src/attack-check.mjs가 runAttackChecks를 내보내야 합니다.');
   const attackAttempts = await runAttackChecks(config);
   if (!Array.isArray(attackAttempts) || !attackAttempts.length || attackAttempts.length > 20) {
@@ -87,18 +87,39 @@ try {
   if (new Set(attackAttempts.map(item => item.attackId)).size !== attackAttempts.length) {
     fail('공격 점검 ID가 중복되었습니다.');
   }
+  const requestEvidence = getLastCheckEvidence();
+  if (!Array.isArray(requestEvidence) || requestEvidence.length !== attackAttempts.length
+      || new Set(requestEvidence.map(item => item.attackId)).size !== requestEvidence.length) {
+    fail('공격 점검 요청 기록과 제출 묶음 항목이 일치하지 않습니다.');
+  }
+  const evidenceById = new Map(requestEvidence.map(item => [item.attackId, item]));
+  const checkedAt = new Date().toISOString();
+  const operationsReport = {
+    schema: 'aleph.stage12.checks.v1', step: config.step, commit, checkedAt,
+    total: attackAttempts.length,
+    executed: attackAttempts.filter(item => item.observed !== 'not_run').length,
+    notRun: attackAttempts.filter(item => item.observed === 'not_run').length,
+    attempts: attackAttempts.map(item => ({
+      ...item,
+      requestId: evidenceById.get(item.attackId)?.requestId ?? null,
+      checkedAt: evidenceById.get(item.attackId)?.checkedAt ?? null,
+    })),
+  };
   const bundle = {
-    schema: 'aleph.defense.submission.v2', step: config.step, commit, repoUrl,
+    schema: 'aleph.defense.submission.v2', step: config.step, commit, repoUrl, checkedAt,
     changedFiles, policyRules,
     attackAttempts, explanation: notes.explanation.trim(), blockedAt: notes.blockedAt ?? null,
     identityProvider: config.identityProvider ?? null, allowedRoutes: config.allowedRoutes ?? [],
     originalApiUrl: config.originalApiUrl ?? null, restoreRoute: config.restoreRoute ?? null,
   };
   if (secretPattern.test(JSON.stringify(bundle))) fail('제출 묶음에 비밀값 또는 연락처로 보이는 내용이 있습니다.');
+  if (secretPattern.test(JSON.stringify(operationsReport))) fail('작전실 점검 기록에 비밀값 또는 연락처로 보이는 내용이 있습니다.');
   mkdirSync(join(root, 'artifacts'), { recursive: true });
   const output = join(root, 'artifacts', 'submission.json');
   writeFileSync(output, `${JSON.stringify(bundle, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
-  process.stdout.write(`제출 묶음 JSON 생성: ${output}\n단계 ${bundle.step} · 커밋 ${commit.slice(0, 12)} · 바뀐 파일 ${changedFiles.length}개 · 규칙 ${policyRules.length}개 · 직접 점검 ${attackAttempts.length}개\n`);
+  const operationsOutput = join(root, 'artifacts', 'operations-report.json');
+  writeFileSync(operationsOutput, `${JSON.stringify(operationsReport, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
+  process.stdout.write(`제출 묶음 JSON 생성: ${output}\n작전실 실제 점검 기록 생성: ${operationsOutput}\n단계 ${bundle.step} · 커밋 ${commit.slice(0, 12)} · 바뀐 파일 ${changedFiles.length}개 · 규칙 ${policyRules.length}개 · 직접 점검 ${attackAttempts.length}개 (${operationsReport.executed} 실행, ${operationsReport.notRun} 미실행)\n`);
 } catch (error) {
   process.stderr.write(`제출 묶음 생성 중 첫 오류: ${error.message}\n`);
   process.exitCode = 1;

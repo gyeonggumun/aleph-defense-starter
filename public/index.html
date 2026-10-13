@@ -314,6 +314,14 @@
         `규칙 ${result.decider?.rules?.length ?? 0}개: ${(result.decider?.rules ?? []).join(', ')}`,
         `ALEPH SDP 엔진 실시간 감사 결과: ${result.decider?.engineRuntime === 'unverified' ? '미실행' : '확인됨'}`,
       ]);
+      const submissionChecks = result.submissionChecks ?? {};
+      addOpsCard('실제 제출 점검', [
+        submissionChecks.status === 'available'
+          ? `실제 요청 ${submissionChecks.executed}/${submissionChecks.total} · 미실행 ${submissionChecks.notRun}`
+          : '점검 기록 없음 · 수치 미실행',
+        `검사 커밋 ${submissionChecks.commit ?? '—'}`,
+        `기록 시각 ${submissionChecks.checkedAt ?? '—'} (UTC)`,
+      ]);
       addOpsCard('탐지', [
         `운영 사건 스트림: ${result.detection?.liveEventFeed === 'not_connected' ? '미연결·미실행' : '연결됨'}`,
         `실제 사건 수: ${Number.isInteger(result.detection?.eventCount) ? result.detection.eventCount : '미실행'}`,

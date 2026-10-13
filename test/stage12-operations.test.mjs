@@ -77,9 +77,39 @@ test('operation response reports real code/DB summaries, labels unrun engine wor
     result.body.dataSummary.ownNoteCount);
   assert.deepEqual(result.body.records.find(row => row.test === '현재 사용자 기기 상태').actual,
     result.body.revocation.deviceStatus);
-  assert.ok(result.body.records.every(row => row.requestId && row.checkedAt));
+  assert.ok(result.body.records.filter(row => row.area !== '제출 점검')
+    .every(row => row.requestId && row.checkedAt));
+  assert.ok(result.body.records.filter(row => row.area === '제출 점검')
+    .every(row => row.actual === 'not_run'
+      ? row.requestId === null && row.checkedAt === null
+      : typeof row.requestId === 'string' && typeof row.checkedAt === 'string'));
   const serialized = JSON.stringify(result.body);
   assert.doesNotMatch(serialized, /title|content|owner_id|credential_id|public_key|private key/iu);
+});
+
+test('operations screen summary and table use the same observed submission report', async () => {
+  const checkedAt = '2026-10-13T07:00:00.000Z';
+  const report = {
+    schema: 'aleph.stage12.checks.v1', step: 12, commit: 'a'.repeat(40), checkedAt,
+    attempts: [
+      { attackId: 'anonymous_notes_api', expected: '401 JSON',
+        observed: `HTTP 401; bodyBytes=19; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=${'b'.repeat(64)}`,
+        requestId: 'request-1', checkedAt },
+      { attackId: 'step_up_live_block', expected: '재인증 전 자료 없음', observed: 'not_run',
+        requestId: null, checkedAt: null },
+    ],
+  };
+  const result = response();
+  await handleOperationsRequest({ method: 'GET', headers: { authorization: 'Bearer fixture' } },
+    result, context(), { STAGE12_CHECK_REPORT_JSON: JSON.stringify(report) });
+  assert.deepEqual(result.body.submissionChecks,
+    { status: 'available', checkedAt, commit: 'a'.repeat(40), total: 2, executed: 1, notRun: 1 });
+  assert.deepEqual(result.body.records.filter(row => row.area === '제출 점검').map(row => [
+    row.test, row.actual, row.requestId, row.checkedAt,
+  ]), [
+    ['anonymous_notes_api', report.attempts[0].observed, 'request-1', checkedAt],
+    ['step_up_live_block', 'not_run', null, null],
+  ]);
 });
 
 test('note backup status verifies pinned content but never returns the note body', () => {
@@ -106,6 +136,7 @@ test('operation room UI is hidden before device approval and its inline module p
   assert.match(source, /operationsPanel\.hidden = false/u);
   assert.doesNotMatch(source, /121건/u);
   assert.match(source, /result\.detection\?\.eventCount/u);
+  assert.match(source, /submissionChecks\.executed/u);
   assert.doesNotMatch(source, /\.innerHTML\s*=/u);
   const executable = source.split(/\r?\n/u).filter(line => !line.trim().startsWith('import ')).join('\n');
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;

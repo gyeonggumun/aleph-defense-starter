@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import authHandler from '../api/auth.js';
 import { createAuthProxy } from '../src/auth-proxy.mjs';
 import { deploymentIdentity } from '../scripts/deployment-identity.mjs';
-import { runAttackChecks } from '../src/attack-check.mjs';
+import { getLastCheckEvidence, runAttackChecks } from '../src/attack-check.mjs';
 
 const config = {
   step: 5,
@@ -87,12 +87,12 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
     const results = await runAttackChecks(config);
     assert.equal(results.length, 6);
     assert.match(results[0].observed, /HTTP 401/u);
-    assert.match(results[2].observed, /\/aleph\.json에서/u);
-    assert.match(results[4].observed, /API 키 없음/u);
-    assert.match(results[5].observed, /JSON 404/u);
+    assert.match(results[2].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
+    assert.match(results[4].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
+    assert.match(results[5].observed, /HTTP 404; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
     assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/', '/api/auth']);
     assert.deepEqual(requested.map(item => item.attackId), results.map(item => item.attackId));
-    assert.ok(results.every(item => item.observed.includes(`attackId=${item.attackId}`)));
+    assert.ok(results.every(item => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET; urlSha256=[a-f0-9]{64}$/u.test(item.observed)));
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
   } finally {
@@ -140,11 +140,15 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
     assert.deepEqual(results.map(result => result.attackId), requestIds);
     assert.deepEqual(requested.map(item => item.attackId), requestIds.filter(id =>
       !['step_up_live_block', 'verified_backup_restore', 'device_approval_live'].includes(id)));
+    const evidence = getLastCheckEvidence();
+    assert.deepEqual(evidence.map(item => item.attackId), requestIds);
+    assert.ok(evidence.filter(item => item.requestId).every(item => typeof item.checkedAt === 'string'));
+    assert.ok(evidence.filter(item => !item.requestId).every(item => item.checkedAt === null));
     assert.ok(results.filter(result => requested.some(item => item.attackId === result.attackId))
-      .every(result => result.observed.includes(`attackId=${result.attackId}`)
-        && result.observed.includes('UTC') && result.observed.length <= 300));
+      .every(result => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET; urlSha256=[a-f0-9]{64}$/u.test(result.observed)
+        && result.observed.length <= 300));
     assert.ok(results.filter(result => !requested.some(item => item.attackId === result.attackId))
-      .every(result => result.observed.startsWith('not_run:')));
+      .every(result => result.observed === 'not_run'));
   } finally {
     globalThis.fetch = originalFetch;
   }
