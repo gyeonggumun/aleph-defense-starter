@@ -66,7 +66,8 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
   try {
     globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
-      requested.push({ path: parsed.pathname, attackId: init.alephEvidence?.caseId, init });
+      requested.push({ path: parsed.pathname, attackId: init.alephEvidence?.caseId,
+        requestKey: init.alephEvidence?.requestKey, init });
       if (parsed.pathname === '/api/notes') return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
         status: 401, headers: { 'content-type': 'application/json' },
       });
@@ -92,6 +93,8 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
     assert.match(results[5].observed, /HTTP 404; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
     assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/', '/api/auth']);
     assert.deepEqual(requested.map(item => item.attackId), results.map(item => item.attackId));
+    assert.equal(new Set(requested.map(item => item.requestKey)).size, requested.length);
+    assert.ok(requested.every(item => typeof item.requestKey === 'string' && item.requestKey.length >= 16));
     assert.ok(results.every(item => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET; urlSha256=[a-f0-9]{64}$/u.test(item.observed)));
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
@@ -108,9 +111,10 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
     globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
       const attackId = init.alephEvidence?.caseId;
-      assert.equal(init.alephEvidence?.requestKey, 'read');
+      assert.equal(typeof init.alephEvidence?.requestKey, 'string');
+      assert.ok(init.alephEvidence.requestKey.length >= 16);
       assert.equal(parsed.searchParams.has('attackId'), false);
-      requested.push({ path: parsed.pathname, attackId });
+      requested.push({ path: parsed.pathname, attackId, requestKey: init.alephEvidence.requestKey });
       const headers = { 'x-vercel-id': `trace-${attackId}` };
       if (parsed.pathname === '/api/notes' || parsed.pathname === '/api/notices') {
         return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
@@ -135,13 +139,16 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
     const requestIds = [
       'anonymous_notes_api', 'public_json_empty', 'deployment_identity', 'security_header',
       'browser_supabase_key_absent', 'auth_proxy_restricts_routes', 'anonymous_notices_api',
-      'step_up_live_block', 'verified_backup_restore', 'device_approval_live', 'operations_requires_auth',
+      'operations_requires_auth', 'step_up_live_block', 'verified_backup_restore', 'device_approval_live',
     ];
     assert.deepEqual(results.map(result => result.attackId), requestIds);
     assert.deepEqual(requested.map(item => item.attackId), requestIds.filter(id =>
       !['step_up_live_block', 'verified_backup_restore', 'device_approval_live'].includes(id)));
+    assert.equal(new Set(requested.map(item => item.requestKey)).size, requested.length);
     const evidence = getLastCheckEvidence();
     assert.deepEqual(evidence.map(item => item.attackId), requestIds);
+    assert.deepEqual(evidence.filter(item => item.requestId).map(item => item.requestId),
+      requested.map(item => item.requestKey));
     assert.ok(evidence.filter(item => item.requestId).every(item => typeof item.checkedAt === 'string'));
     assert.ok(evidence.filter(item => !item.requestId).every(item => item.checkedAt === null));
     assert.ok(results.filter(result => requested.some(item => item.attackId === result.attackId))

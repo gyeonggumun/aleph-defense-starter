@@ -203,7 +203,7 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 5. 로컬 Vercel 서버는 실행 터미널에서 `Ctrl+C`를 눌러 중지합니다. 웹 앱은 탭을 닫거나 로그아웃합니다. 로그아웃·승인 만료·철회 뒤 브라우저 화면은 보호 자료를 비웁니다.
 6. 되돌릴 때 먼저 `git status`와 `git diff`를 확인한 뒤 단계 커밋을 `git revert <12단계-커밋>`으로 되돌립니다. `reset --hard`는 쓰지 않습니다. DB 행과 감사 기록은 Git 되돌리기에 포함되지 않습니다. 운영 정책은 사전 고정 SHA-256으로 검증한 별도 사본이 있을 때만 `node scripts/recover-policy.mjs preview <사본.json> <정책.trial.json> <사전기록-SHA256>`으로 범위를 미리 보고, 확인 후 `apply`할 수 있습니다. 현재 검증된 정책 사본이 없어 실제 정책 복구는 미실행입니다. 비공개 메모 복원도 서버에 검증된 사본이 준비되고 B 계정이 확인되기 전에는 하지 않습니다.
 
-저장점 전 확인은 `node --test test/r5.test.mjs test/stage12-operations.test.mjs`로 수행합니다. 커밋 후 `npm run bundle`은 실제 배포 요청을 `alephEvidence.caseId`로 실행기 기록과 연결합니다(URL·헤더에는 ID를 넣지 않습니다). `observed`에는 HTTP 상태, `bodyBytes`, `jsonArrayLength`, `jsonReady`, `method`, `urlSha256`만 넣고, 요청 ID와 UTC 확인 시각은 별도 `artifacts/operations-report.json`에 기록합니다. 작전실 표와 수치는 같은 점검 기록 파일에서 읽습니다. 요청을 보내지 않은 엔진·계정·복구 시험은 `not_run`으로 남깁니다. 이 자기 점검이 41종 총공세나 A/B 정상·금지 요청을 대신하지 않습니다.
+저장점 전 확인은 `node --test test/r5.test.mjs test/stage12-operations.test.mjs test/stage12-checks.test.mjs`로 수행합니다. `src/attack-check.mjs`는 격리 실행을 위해 import 없이 두고, 각 GET 요청에 고유 `requestKey`와 `caseId`를 `alephEvidence` 메타데이터로 붙입니다(URL·헤더에는 ID를 넣지 않습니다). `observed`는 HTTP 상태, `bodyBytes`, `jsonArrayLength`, `jsonReady`, `method`, `urlSha256`만 포함하고 요청 ID·UTC 확인 시각은 별도 필드에 기록합니다. `npm run bundle`과 `GET /api/checks`는 같은 검사 함수를 씁니다. 서버가 실제 배포 요청에서 만든 막음·뚫림·미실행 수치와 표를 화면에 그대로 표시하며, 점검 실패 시 0이나 성공으로 대체하지 않습니다. 요청을 보내지 않은 엔진·계정·복구 시험은 `not_run`으로 남깁니다. 이 자기 점검이 41종 총공세나 A/B 정상·금지 요청을 대신하지 않습니다.
 
 ## 시작 틀의 자동 처리
 

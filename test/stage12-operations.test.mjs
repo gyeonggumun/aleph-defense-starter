@@ -54,7 +54,12 @@ test('operations status requires a logged-in, server-approved device', async () 
 test('operation response reports real code/DB summaries, labels unrun engine work, and contains no note data', async () => {
   const result = response();
   await handleOperationsRequest({ method: 'GET', headers: { authorization: 'Bearer fixture' } },
-    result, context(), {});
+    result, context(), { STAGE12_CHECK_REPORT_JSON: JSON.stringify({
+      schema: 'aleph.stage12.checks.v1', step: 12, commit: 'a'.repeat(40),
+      checkedAt: '2026-10-13T07:00:00.000Z', attempts: [{ attackId: 'step_up_live_block',
+        stage: 7, expected: '재인증 전 자료 없음', observed: 'not_run', result: 'not_run',
+        requestId: null, checkedAt: null }],
+    }) });
   assert.equal(result.statusCode, 200);
   assert.match(result.headers['Cache-Control'], /no-store/u);
   assert.equal(result.body.schema, 'aleph.operations.v1');
@@ -92,10 +97,10 @@ test('operations screen summary and table use the same observed submission repor
   const report = {
     schema: 'aleph.stage12.checks.v1', step: 12, commit: 'a'.repeat(40), checkedAt,
     attempts: [
-      { attackId: 'anonymous_notes_api', expected: '401 JSON',
+      { attackId: 'anonymous_notes_api', stage: 3, expected: '401 JSON', result: 'blocked',
         observed: `HTTP 401; bodyBytes=19; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=${'b'.repeat(64)}`,
         requestId: 'request-1', checkedAt },
-      { attackId: 'step_up_live_block', expected: '재인증 전 자료 없음', observed: 'not_run',
+      { attackId: 'step_up_live_block', stage: 7, expected: '재인증 전 자료 없음', observed: 'not_run', result: 'not_run',
         requestId: null, checkedAt: null },
     ],
   };
@@ -103,7 +108,8 @@ test('operations screen summary and table use the same observed submission repor
   await handleOperationsRequest({ method: 'GET', headers: { authorization: 'Bearer fixture' } },
     result, context(), { STAGE12_CHECK_REPORT_JSON: JSON.stringify(report) });
   assert.deepEqual(result.body.submissionChecks,
-    { status: 'available', checkedAt, commit: 'a'.repeat(40), total: 2, executed: 1, notRun: 1 });
+    { status: 'available', checkedAt, commit: 'a'.repeat(40), total: 2,
+      blocked: 1, failed: 0, executed: 1, notRun: 1 });
   assert.deepEqual(result.body.records.filter(row => row.area === '제출 점검').map(row => [
     row.test, row.actual, row.requestId, row.checkedAt,
   ]), [

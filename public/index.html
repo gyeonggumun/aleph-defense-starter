@@ -87,6 +87,18 @@
       <p id="notes-status" class="status" role="status" aria-live="polite"></p>
       <ul id="notes" aria-live="polite"></ul>
     </section>
+    <section id="checks-panel" class="panel" aria-labelledby="checks-heading">
+      <h2 id="checks-heading">탈환 작전실 · 실제 점검</h2>
+      <p>서버가 배포 주소에 보낸 실제 응답을 표시합니다. 기록을 읽지 못하면 숫자를 채우지 않으며, 미실행 점검은 별도로 표시합니다.</p>
+      <div id="checks-summary" class="ops-grid" aria-live="polite"></div>
+      <p id="checks-status" class="status" role="status" aria-live="polite">서버 점검 기록을 불러오는 중입니다.</p>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead><tr><th>단계</th><th>공격 ID</th><th>기대</th><th>실제 응답</th><th>판정</th><th>요청 ID</th><th>확인 시각 (UTC)</th></tr></thead>
+          <tbody id="checks-records"></tbody>
+        </table>
+      </div>
+    </section>
     <section id="operations-panel" class="panel" hidden aria-labelledby="operations-heading">
       <h2 id="operations-heading">탈환 작전실</h2>
       <p>서버가 반환한 요약입니다. 판정기·탐지의 가상 입력 결과와 운영 엔진의 미실행 상태를 구분합니다. 메모 본문과 기기 식별자는 표시하지 않습니다.</p>
@@ -156,6 +168,9 @@
     const operationsStatus = document.querySelector('#operations-status');
     const operationsSummary = document.querySelector('#operations-summary');
     const operationsRecords = document.querySelector('#operations-records');
+    const checksSummary = document.querySelector('#checks-summary');
+    const checksStatus = document.querySelector('#checks-status');
+    const checksRecords = document.querySelector('#checks-records');
     const devicePanel = document.querySelector('#device-panel');
     const deviceStatus = document.querySelector('#device-status');
     const authStatus = document.querySelector('#auth-status');
@@ -170,6 +185,45 @@
     let currentSession = null;
     let deviceGrant = null;
     let deviceGrantExpiresAt = 0;
+
+    async function loadPublicChecks() {
+      try {
+        const response = await fetch('/api/checks', { cache: 'no-store', credentials: 'omit',
+          headers: { accept: 'application/json' } });
+        const report = await response.json();
+        if (!response.ok || report?.schema !== 'aleph.stage12.checks.v1') throw new Error('점검 기록을 확인할 수 없습니다.');
+        checksSummary.replaceChildren();
+        for (const [label, key] of [['전체', 'total'], ['막음', 'blocked'], ['뚫림', 'failed'], ['미실행', 'notRun']]) {
+          const card = document.createElement('article');
+          const heading = document.createElement('h3');
+          const value = document.createElement('p');
+          card.className = 'ops-card';
+          heading.textContent = label;
+          value.textContent = Number.isInteger(report[key]) ? String(report[key]) : '확인 불가';
+          card.append(heading, value);
+          checksSummary.append(card);
+        }
+        checksRecords.replaceChildren(...(report.attempts ?? []).map(item => {
+          const row = document.createElement('tr');
+          const result = item.result === 'blocked' ? '기대대로 차단'
+            : item.result === 'breached' ? '허용됨' : '미실행';
+          for (const value of [item.stage, item.attackId, item.expected, item.observed, result,
+            item.requestId, item.checkedAt]) {
+            const cell = document.createElement('td');
+            cell.textContent = value ?? '—';
+            row.append(cell);
+          }
+          return row;
+        }));
+        checksStatus.textContent = `검사 커밋 ${report.commit ?? '확인 불가'} · 기록 ${report.checkedAt} (UTC)`;
+      } catch {
+        checksSummary.replaceChildren();
+        checksRecords.replaceChildren();
+        checksStatus.textContent = '점검 기록을 읽지 못했습니다. 수치를 표시하지 않습니다.';
+      }
+    }
+
+    void loadPublicChecks();
 
     function deviceReady() {
       if (deviceGrant && Date.now() >= deviceGrantExpiresAt) {

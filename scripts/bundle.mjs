@@ -77,11 +77,18 @@ try {
   }
   for (const attempt of attackAttempts) {
     if (!attempt || typeof attempt !== 'object' || Array.isArray(attempt)
-        || Object.keys(attempt).sort().join(',') !== 'attackId,expected,observed'
+        || Object.keys(attempt).sort().join(',') !== 'attackId,expected,observed,result,stage'
         || typeof attempt.attackId !== 'string' || !/^[a-z0-9][a-z0-9_.-]{0,79}$/iu.test(attempt.attackId)
+        || !Number.isInteger(attempt.stage) || attempt.stage < 1 || attempt.stage > 12
         || typeof attempt.expected !== 'string' || !attempt.expected.trim() || attempt.expected.length > 300
         || typeof attempt.observed !== 'string' || !attempt.observed.trim() || attempt.observed.length > 300) {
-      fail('공격 점검 결과에는 attackId·expected·observed만 넣어 주세요.');
+      fail('공격 점검 결과에는 attackId·stage·expected·observed·result를 넣어 주세요.');
+    }
+    if (!['blocked', 'breached', 'not_run'].includes(attempt.result)
+        || (attempt.result === 'not_run') !== (attempt.observed === 'not_run')
+        || (attempt.observed !== 'not_run'
+          && !/^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=[A-Z]{3,10}(?:; urlSha256=[a-f0-9]{64})?$/u.test(attempt.observed))) {
+      fail('공격 점검 결과는 대조 가능한 HTTP 응답 필드만 쓰고, 보내지 않은 요청은 not_run으로 적어 주세요.');
     }
   }
   if (new Set(attackAttempts.map(item => item.attackId)).size !== attackAttempts.length) {
@@ -97,7 +104,8 @@ try {
   const operationsReport = {
     schema: 'aleph.stage12.checks.v1', step: config.step, commit, checkedAt,
     total: attackAttempts.length,
-    executed: attackAttempts.filter(item => item.observed !== 'not_run').length,
+    blocked: attackAttempts.filter(item => item.result === 'blocked').length,
+    failed: attackAttempts.filter(item => item.result === 'breached').length,
     notRun: attackAttempts.filter(item => item.observed === 'not_run').length,
     attempts: attackAttempts.map(item => ({
       ...item,
@@ -119,7 +127,7 @@ try {
   writeFileSync(output, `${JSON.stringify(bundle, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
   const operationsOutput = join(root, 'artifacts', 'operations-report.json');
   writeFileSync(operationsOutput, `${JSON.stringify(operationsReport, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
-  process.stdout.write(`제출 묶음 JSON 생성: ${output}\n작전실 실제 점검 기록 생성: ${operationsOutput}\n단계 ${bundle.step} · 커밋 ${commit.slice(0, 12)} · 바뀐 파일 ${changedFiles.length}개 · 규칙 ${policyRules.length}개 · 직접 점검 ${attackAttempts.length}개 (${operationsReport.executed} 실행, ${operationsReport.notRun} 미실행)\n`);
+  process.stdout.write(`제출 묶음 JSON 생성: ${output}\n작전실 실제 점검 기록 생성: ${operationsOutput}\n단계 ${bundle.step} · 커밋 ${commit.slice(0, 12)} · 바뀐 파일 ${changedFiles.length}개 · 규칙 ${policyRules.length}개 · 직접 점검 ${attackAttempts.length}개 (막음 ${operationsReport.blocked} · 뚫림 ${operationsReport.failed} · 미실행 ${operationsReport.notRun})\n`);
 } catch (error) {
   process.stderr.write(`제출 묶음 생성 중 첫 오류: ${error.message}\n`);
   process.exitCode = 1;

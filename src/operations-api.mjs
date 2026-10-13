@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import config from '../aleph.config.json' with { type: 'json' };
 import { RULE_IDS, decide } from './decider.mjs';
 import { deviceApproved } from './device-approval.mjs';
 import { noteBackupStatus } from './restore-note.mjs';
+import { getStage12CheckReport } from './stage12-checks.mjs';
 
 function respond(response, status, payload) {
   response.setHeader('Cache-Control', 'no-store');
@@ -33,31 +33,6 @@ function summarizeDeviceStatuses(rows) {
   return counts;
 }
 
-async function loadSubmissionChecks(settings) {
-  try {
-    const raw = typeof settings.STAGE12_CHECK_REPORT_JSON === 'string'
-      ? settings.STAGE12_CHECK_REPORT_JSON
-      : await readFile(new URL('../artifacts/operations-report.json', import.meta.url), 'utf8');
-    const report = JSON.parse(raw);
-    if (report?.schema !== 'aleph.stage12.checks.v1' || !Array.isArray(report.attempts)) return null;
-    const attempts = report.attempts.filter(item => item && typeof item === 'object'
-      && /^[a-z0-9][a-z0-9_.-]{0,79}$/iu.test(item.attackId ?? '')
-      && typeof item.expected === 'string' && typeof item.observed === 'string'
-      && (item.observed === 'not_run'
-        || /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=[A-Z]{3,10}; urlSha256=[a-f0-9]{64}$/u.test(item.observed))
-      && (item.requestId === null || (typeof item.requestId === 'string' && item.requestId.length <= 200))
-      && (item.checkedAt === null || (typeof item.checkedAt === 'string' && !Number.isNaN(Date.parse(item.checkedAt)))));
-    if (!attempts.length || attempts.length !== report.attempts.length
-        || new Set(attempts.map(item => item.attackId)).size !== attempts.length) return null;
-    const executed = attempts.filter(item => item.observed !== 'not_run').length;
-    return {
-      checkedAt: typeof report.checkedAt === 'string' ? report.checkedAt : null,
-      commit: /^[a-f0-9]{40}$/iu.test(report.commit ?? '') ? report.commit : null,
-      total: attempts.length, executed, notRun: attempts.length - executed, attempts,
-    };
-  } catch { return null; }
-}
-
 export async function handleOperationsRequest(request, response, suppliedContext, settings = process.env) {
   const requestId = randomUUID();
   let checkedAt = new Date().toISOString();
@@ -83,7 +58,7 @@ export async function handleOperationsRequest(request, response, suppliedContext
       context.database.from('vault_notes').select('id', { count: 'exact', head: true })
         .eq('owner_id', identity.userId),
       context.database.from('device_credentials').select('status').eq('owner_id', identity.userId),
-      loadSubmissionChecks(settings),
+      getStage12CheckReport(settings),
     ]);
     if (noteCount.error || deviceRows.error) throw new Error('status_query_failed');
 
@@ -120,10 +95,11 @@ export async function handleOperationsRequest(request, response, suppliedContext
         source: `실제 HTTP 점검 · 커밋 ${submissionChecks.commit ?? '확인 불가'}`,
       })));
     }
-    const submissionCheckSummary = submissionChecks
-      ? { status: 'available', checkedAt: submissionChecks.checkedAt, commit: submissionChecks.commit,
-        total: submissionChecks.total, executed: submissionChecks.executed, notRun: submissionChecks.notRun }
-      : { status: 'unavailable', checkedAt: null, commit: null, total: null, executed: null, notRun: null };
+    const submissionCheckSummary = {
+      status: 'available', checkedAt: submissionChecks.checkedAt, commit: submissionChecks.commit,
+      total: submissionChecks.total, blocked: submissionChecks.blocked, failed: submissionChecks.failed,
+      executed: submissionChecks.executed, notRun: submissionChecks.notRun,
+    };
 
     return respond(response, 200, {
       schema: 'aleph.operations.v1', requestId, checkedAt,
