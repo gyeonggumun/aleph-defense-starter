@@ -232,3 +232,36 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 41종 공격 전체는 심판이 실행하며 이 저장소에서 전체 시험을 실행하거나 통과로 계산하지 않습니다. 실행·중지는 앞의 설치·실행·중지·복구 절차를 사용합니다. 복구는 검증된 사본의 범위를 먼저 확인하고 대상만 적용하며 다른 서비스와 감사 이력을 보존합니다.
 
 가점 조건은 새로 받은 저장소에서 `npm install`이 성공하는지, `npm run decider:test`에서 문서의 18개 요청 이름만 읽고 응답 다섯 항목과 모든 `ruleIds`가 유효한지, `aleph.config.json`의 `step`이 12 이상인지 확인합니다. 계약 검증 시험은 문서 밖 요청 항목을 읽으면 즉시 실패하도록 만들어져 있습니다.
+
+### 2026-10-13 실측 및 가점 확인
+
+검사 커밋: 51028424705196ca26b1438ebbd6159f1165eba5 · 확인 시각: 2026-10-13T10:24:32.628Z
+
+전체 20 · 기대 충족 17 · 실패 0 · 미실행 3
+
+공개 GitHub 저장소를 별도 임시 폴더에 새로 clone한 위 코드 커밋에서 `npm install`을 실행했습니다. Node v22.14.0 / npm 10.9.2에서 종료 코드 0, 34개 패키지 설치, 설치 뒤 `git status --short` 출력 없음으로 확인했습니다. 판정기 계약 시험은 문서의 18개 요청 이름만 읽고, 정상·금지 가상 요청 모두 다섯 응답 항목과 RULE_IDS 내 규칙 ID를 반환했습니다. `step`은 12입니다. 관련 점검 17개와 계약 시험 5개가 통과했습니다.
+
+이 표는 해당 코드 커밋의 운영 `/api/checks` 응답을 `npm run checks:table`로 읽은 기록입니다. `rule_` 행은 학생 코드의 합성 시험을 실제 HTTP로 호출한 결과입니다. 실제 엔진 집행·계정 CRUD·복구를 포함하지 않습니다. `blocked`는 점검의 기대 응답 충족이며 심판 최종 판정이 아닙니다. 없는 JSON 값을 null로 기록하지 않았습니다.
+
+| 단계 | 요청 | 기대 결과 | 실제 API 결과 | 결과 | 요청 상관 ID | 확인 시각 (UTC) |
+|---|---|---|---|---|---|---|
+| 3 | anonymous_notes_api | 비로그인 목록 요청은 401/403 JSON 오류 | HTTP 401 | blocked | c7777117-6e32-41cd-9188-2268797121e3 | 2026-10-13T10:24:31.390Z |
+| 2 | public_json_empty | 공개 data.json에 메모가 없음 | HTTP 200 | blocked | a56db8cc-36c8-4823-86cd-f35b6e7cb397 | 2026-10-13T10:24:31.470Z |
+| 12 | deployment_identity | /aleph.json에 12단계 정보와 허용 경로가 있음 | HTTP 200 | blocked | f043904c-23f9-4b64-b3bc-4822b0b3fb3b | 2026-10-13T10:24:31.520Z |
+| 2 | security_header | 첫 화면에 nosniff 또는 CSP 보안 헤더가 있음 | HTTP 200 | blocked | e40b21f3-3528-4aab-bf71-7094ad8fa919 | 2026-10-13T10:24:31.595Z |
+| 5 | browser_supabase_key_absent | 첫 화면 응답에 Supabase 공개 키가 없음 | HTTP 200 | blocked | d1f4aeef-4f03-439a-9d47-8595e28f5298 | 2026-10-13T10:24:31.619Z |
+| 5 | auth_proxy_restricts_routes | 인증 중계가 Auth 경로 이외의 요청을 거부 | HTTP 404 | blocked | b91bb069-a007-408c-b2d8-f5582872fce4 | 2026-10-13T10:24:31.672Z |
+| 8 | anonymous_notices_api | 비로그인 공지 요청은 401/403 JSON 오류 | HTTP 401 | blocked | 8ce68bef-d0a5-4b9a-b89c-8a9ebc442224 | 2026-10-13T10:24:31.712Z |
+| 12 | operations_requires_auth | /api/operations는 로그인 전 401 JSON과 요청 ID를 반환 | HTTP 401 | blocked | f4cf1db2-108b-462e-bdf4-8e57b9327dec | 2026-10-13T10:24:31.883Z |
+| 1 | legacy_static_copy | 이전 public 경로는 공개 메모를 반환하지 않음 | HTTP 404 | blocked | 867d01a6-dac3-4b5a-91c3-6c3fa3389b03 | 2026-10-13T10:24:31.892Z |
+| 4 | anonymous_other_note | 무인증 단건 메모 요청은 JSON 401/403 | HTTP 401 | blocked | d6dfbc5b-2ee5-494e-99d7-fc44053498eb | 2026-10-13T10:24:31.917Z |
+| 6 | rule_device_registration | 학생 기기 규칙: 정상 허용·미등록 거부 | HTTP 200; jsonReady=true | blocked | 1715a60c-b2b8-438e-87ee-89f5550e097e | 2026-10-13T10:24:31.930Z |
+| 7 | rule_normal_access | 학생 판정기: 정상 합성 요청 허용 | HTTP 200; jsonReady=true | blocked | 24594d7a-1b11-4809-8fa5-6946500c8909 | 2026-10-13T10:24:31.951Z |
+| 7 | rule_step_up | 학생 판정기: 복합 위험 추가 확인·새 로그인 허용 | HTTP 200; jsonReady=true | blocked | 5eb2e294-8f1f-450b-8995-f27f060deb85 | 2026-10-13T10:24:32.500Z |
+| 8 | rule_resource_zones | 학생 구역 규칙: 정확한 경로 허용·금지 경로와 수정 거부 | HTTP 200; jsonReady=true | blocked | 159d272d-2178-44c5-bbdf-3e1e7dcef170 | 2026-10-13T10:24:32.556Z |
+| 9 | rule_detection_normal | 학생 탐지기: 정상·경계 사건은 회수 제안 없음 | HTTP 200; jsonReady=true | blocked | 0aff6c6c-d339-4466-92fc-4d948e7f7a4a | 2026-10-13T10:24:32.569Z |
+| 9 | rule_detection_burst | 학생 탐지기: 계약상 폭주 사건은 회수 제안 | HTTP 200; jsonReady=true | blocked | ef3cde82-a4a8-408c-b8a8-aba7d4c974d3 | 2026-10-13T10:24:32.604Z |
+| 10 | rule_policy_restore_guard | 합성 정책 검증: 잘못된 사본 거부·다른 규칙 보존 | HTTP 200; jsonReady=true | blocked | 9aac37d9-1756-4486-bdf2-e32847a4c870 | 2026-10-13T10:24:32.627Z |
+| 7 | step_up_live_block | 재로그인 전에는 복합 위험 요청에서 자료 없음 | not_run | not_run | 미실행 | 미실행 |
+| 10 | verified_backup_restore | 검증한 사본으로 정책과 지정 메모만 복구 | not_run | not_run | 미실행 | 미실행 |
+| 11 | device_approval_live | 승인된 기기의 WebAuthn 확인 뒤 자료 접근 | not_run | not_run | 미실행 | 미실행 |
