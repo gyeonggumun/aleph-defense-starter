@@ -219,6 +219,18 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 
 `src/decider.mjs`와 `src/detect.mjs`의 로컬 시험은 반 엔진이나 운영 심판의 결과가 아닙니다. 1단계 이후 제출 묶음 계약 `aleph.defense.submission.v2`는 `scripts/bundle.mjs`에 남아 있으며, 코딩 도구가 해당 단계의 최신 배포 주소와 Git 원격을 맞춘 뒤 사용합니다.
 
+## 보너스 xdr-03 저장점 · 알려진 취약점 악용
+
+`xdr/known-cve/read-alerts.mjs`는 원본 경보에서 시각·출발 주소·계정·규칙 수준·설명 다섯 값만 읽고 비밀값처럼 보이는 문자열을 가립니다. 확인 명령은 `node xdr/known-cve/read-alerts.mjs`이며 출력 줄 수와 원본 경보 수가 같아야 합니다. 이 확인용 읽기 모듈은 판단기가 불러오지 않습니다.
+
+`patterns.json`의 패턴은 CVE-2021-44228과 MITRE ATT&CK T1190에 근거합니다. `decide.mjs` 맨 위에는 같은 패턴 상수를 두며, 이 파일은 `decide(alert)`만 내보내고 다른 파일·패키지·인터넷·Jev를 사용하지 않습니다. 실제 요청 머리글·인자에서 완전한 원격 JNDI 조회 식이 확인되면 확신도 0.98로 block 후보를 냅니다. 취약점·도구 이름 또는 잘린 식만 있으면 0.55~0.65로 alert, 근거 패턴이 없으면 0.05로 record입니다. 조회 식은 실행하지 않고 메모리에서 문자열로만 검사합니다.
+
+`respond.mjs`는 판단을 다시 대조하여 확인된 차단 후보만 `xdr/known-cve/deny-rules.json`에 저장합니다. 규칙 ID는 `xdr.known_cve_source_ip`, 만료는 처리 시각부터 24시간이며 근거 경보 ID를 붙입니다. `src/decider.mjs`의 기존 규칙은 유지하고 이 추가 규칙만 연결했습니다. `xdr/alerts.log`에는 block·alert의 가린 메타데이터만 한 줄씩 추가하고 기존 감사 기록은 보존합니다. 원본 경보와 다른 모듈의 규칙은 변경하지 않습니다.
+
+실행은 `npm run xdr:run -- known-cve`이며 `xdr/known-cve/result.json`의 counts와 결정을 갱신합니다. `node --test test/xdr-known-cve.test.mjs test/xdr-run.test.mjs test/decider-isolated.test.mjs test/stage12-checks.test.mjs`로 단독 파일·빈 격리 VM·비밀값 마스킹·정상 이벤트·위조 차단 후보·만료·실행기 연결을 확인합니다. 이 결과는 합성 경보와 로컬 판정기 시험이며 ALEPH SDP 운영 엔진의 실제 차단 또는 심판 최종 판정이 아닙니다.
+
+2026-10-13 실행 결과: 원본 24건과 읽기 출력 24줄이 일치했고 block 8 · alert 8 · record 8입니다. 로컬 판정기에 재전송하여 명확한 8건 거부와 나머지 16건 허용을 확인했으며 정상 이벤트 오차단은 0건입니다. 관련 테스트 15개가 통과했습니다. 원본 경보·기존 두 모듈의 거부 규칙·기존 감사 로그 내용은 보존했습니다.
+
 ## 12단계 점검 기록 재현
 
 학생 작업은 판정기 `src/decider.mjs`, 탐지 규칙 `src/detect.mjs`, 접속 화면 `public/index.html`, 자료 API `api/`, 복구 검증 `scripts/recover-policy.mjs`입니다. 제공 엔진의 출처는 ALEPH SDP 엔진입니다. 아래 합성 입력 시험은 학생 코드의 실행 결과이며 엔진의 실제 접속 집행·권한 회수·백업 복원을 대신하지 않습니다.

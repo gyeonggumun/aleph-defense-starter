@@ -1,0 +1,77 @@
+{
+  "schema": "aleph.xdr.known-cve-deny.v1",
+  "rules": [
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "203.0.113.10",
+      "evidenceAlertId": "kc-01",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "203.0.113.10",
+      "evidenceAlertId": "kc-02",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "198.51.100.16",
+      "evidenceAlertId": "kc-03",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "192.0.2.16",
+      "evidenceAlertId": "kc-04",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "203.0.113.24",
+      "evidenceAlertId": "kc-05",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "198.51.100.24",
+      "evidenceAlertId": "kc-06",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "192.0.2.24",
+      "evidenceAlertId": "kc-07",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    },
+    {
+      "ruleId": "xdr.known_cve_source_ip",
+      "sourceAddress": "203.0.113.31",
+      "evidenceAlertId": "kc-08",
+      "reason": "log4shell_remote_lookup",
+      "confidence": 0.98,
+      "createdAt": "2026-10-13T11:19:24.043Z",
+      "expiresAt": "2026-10-14T11:19:24.043Z"
+    }
+  ]
+}

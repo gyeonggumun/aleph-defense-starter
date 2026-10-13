@@ -60,6 +60,9 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error;
     }
+  } else if (moduleKey === 'known-cve') {
+    const { respond } = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href);
+    await respond({ root, alerts: fixture.alerts, decisions });
   }
 
   const result = { schema: 'aleph.xdr.result.v1', moduleKey, decisions, counts };

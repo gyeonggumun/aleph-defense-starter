@@ -1,0 +1,16 @@
+{
+  "schema": "aleph.xdr.patterns.v1",
+  "source": "CVE-2021-44228 · MITRE ATT&CK T1190",
+  "patterns": [
+    {
+      "name": "log4shell_remote_lookup",
+      "condition": "요청 머리글·주소 인자에 원격 프로토콜과 목적지를 포함하고 닫힌 JNDI 조회 식이 있습니다.",
+      "evidence": "Apache의 CVE-2021-44228 설명은 공격자가 제어한 로그·인자의 JNDI/LDAP 조회 악용을 설명합니다. https://logging.apache.org/security.html"
+    },
+    {
+      "name": "known_cve_probe_context",
+      "condition": "취약점·JNDI·라이브러리 이름, 점검 도구 흔적 또는 불완전한 조회 식만 있어 완전한 악용 형태를 확인하지 못했습니다. 차단하지 않고 알립니다.",
+      "evidence": "MITRE ATT&CK T1190은 외부 공개 앱의 취약점 악용과 CVE-2021-44228 사례를 다룹니다. 단어·도구 이름만으로 악용을 확정하지 않는 조건은 이 모듈의 보수적 판단 기준입니다. https://attack.mitre.org/techniques/T1190/"
+    }
+  ]
+}
