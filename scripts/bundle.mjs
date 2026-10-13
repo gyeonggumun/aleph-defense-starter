@@ -24,7 +24,7 @@ const normalizedRepo = value => {
 
 try {
   const dirty = git('status', '--porcelain', '--untracked-files=all').split(/\r?\n/u).filter(Boolean);
-  const unrelatedDirty = dirty.filter(entry => !/^ M artifacts\/submission\.json$/u.test(entry));
+  const unrelatedDirty = dirty.filter(entry => !/^M artifacts\/submission\.json$/u.test(entry));
   if (unrelatedDirty.length) fail(`커밋되지 않은 파일이 있습니다. 먼저 확인해 주세요:\n${unrelatedDirty.join('\n')}`);
   const commit = git('rev-parse', '--verify', 'HEAD');
   let repoUrl;
