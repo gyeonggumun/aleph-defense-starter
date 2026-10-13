@@ -218,3 +218,15 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 [AGENTS.md](AGENTS.md)를 먼저 읽고 이번 요청의 단계만 바꿉니다. 데이터 보호·로그인·허용 경로·정책 변경은 제공된 계약을 따릅니다. 비밀번호·토큰·서버 전용 키·실제 학생 기록을 코드, Git, 브라우저, 로그, 작전실 표에 넣지 않습니다.
 
 `src/decider.mjs`와 `src/detect.mjs`의 로컬 시험은 반 엔진이나 운영 심판의 결과가 아닙니다. 1단계 이후 제출 묶음 계약 `aleph.defense.submission.v2`는 `scripts/bundle.mjs`에 남아 있으며, 코딩 도구가 해당 단계의 최신 배포 주소와 Git 원격을 맞춘 뒤 사용합니다.
+
+## 12단계 점검 기록 재현
+
+학생 작업은 판정기 `src/decider.mjs`, 탐지 규칙 `src/detect.mjs`, 접속 화면 `public/index.html`, 자료 API `api/`, 복구 검증 `scripts/recover-policy.mjs`입니다. 제공 엔진의 출처는 ALEPH SDP 엔진입니다. 아래 합성 입력 시험은 학생 코드의 실행 결과이며 엔진의 실제 접속 집행·권한 회수·백업 복원을 대신하지 않습니다.
+
+1. `npm ci`로 의존성을 설치한 뒤 `node --test test/r5.test.mjs test/stage12-checks.test.mjs test/stage12-operations.test.mjs`를 실행합니다. 이 시험은 읽기 요청, 요청 상관 ID, 정상·금지 규칙, 미실행, 화면 요약의 일치를 확인합니다. 격리 환경에서 Node import·Buffer·TextEncoder·전역 crypto 없이 점검기를 실행하는 회귀 시험도 포함합니다.
+2. 변경을 커밋하고 해당 커밋이 실제 자료실에 배포된 뒤 `npm run bundle`을 실행합니다. 이 명령은 GET/HEAD만 최대 24건 보내고 `artifacts/submission.json` 하나만 생성합니다. 생성 파일과 `bundle-notes.json`은 커밋하지 않습니다.
+3. `npm run checks:table`로 `/api/checks`의 실제 응답을 표로 출력합니다. 화면도 이 응답의 `attempts`에서 전체·기대 충족·실패·미실행 수치를 계산합니다. 기대 문장은 `expected`에 두고 `observed`에는 HTTP 상태·바이트 수·JSON 배열 길이·ready·메서드만 기록합니다. 각 ID는 `alephEvidence.requestKey`에 전달한 요청 상관 ID이며 서버 발급 ID로 표시하지 않습니다.
+4. 기기·정상 접속·추가 확인·정확한 경로·탐지 정상/폭주·합성 사본 검증은 `/api/checks?case=...`에서 실제 학생 함수를 실행합니다. `ready`를 고정 상수로 만들지 않으며 정상 허용 또는 금지 거부가 깨지면 false입니다. 응답은 학생 출처와 `engine: ALEPH SDP 엔진`, `engineEnforced: not_run`을 명시합니다.
+5. `step_up_live_block`, `verified_backup_restore`, `device_approval_live`는 필요한 실제 로그인·검증된 사전 사본·실기기 승인이 준비되기 전까지 요청 없이 `not_run`으로 둡니다. A/B 정상 CRUD·타인 소유권은 승인된 두 계정에서 [운영 증거 절차](docs/OPERATIONAL-EVIDENCE.md)대로 별도 확인합니다.
+
+41종 공격 전체는 심판이 실행하며 이 저장소에서 전체 시험을 실행하거나 통과로 계산하지 않습니다. 실행·중지는 앞의 설치·실행·중지·복구 절차를 사용합니다. 복구는 검증된 사본의 범위를 먼저 확인하고 대상만 적용하며 다른 서비스와 감사 이력을 보존합니다.

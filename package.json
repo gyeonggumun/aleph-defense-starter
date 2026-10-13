@@ -8,6 +8,7 @@
     "test:stage12": "node --test test/stage12-operations.test.mjs",
     "test:package": "node --test test/package-starter.test.mjs",
     "bundle": "node scripts/bundle.mjs",
+    "checks:table": "node scripts/checks-table.mjs",
     "decider:test": "node scripts/decider-test.mjs && node --test test/decider-isolated.test.mjs",
     "detect:test": "node scripts/detect-test.mjs",
     "fixture:7": "node scripts/fixture-7.mjs",

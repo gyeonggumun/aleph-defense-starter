@@ -5,7 +5,7 @@
 - 단계별 정상 요청과 금지 요청을 따로 실행하고, 실제 HTTP 응답의 상태 코드와 JSON 오류 코드만 기록합니다.
 - 요청 ID는 보호 API 응답의 `X-Request-Id`/`requestId` 또는 Vercel의 `x-vercel-id`를 기록합니다. 둘 다 없으면 `없음`으로 둡니다. 임의 ID를 서버 추적 ID처럼 적지 않습니다.
 - 확인 시각은 UTC ISO 형식으로 기록합니다. 토큰, 이메일, 메모 본문, 기기 자격 증명은 표·로그·제출물에 넣지 않습니다.
-- 번들 `observed`에는 심판이 확인할 수 있는 HTTP 상태, `bodyBytes`, `jsonArrayLength`, `jsonReady`, `method`, `urlSha256`만 둡니다. 자동 점검의 요청 ID와 시각은 `artifacts/operations-report.json`에 별도로 남기며 작전실의 같은 표·요약이 이 파일을 읽습니다.
+- 번들 `observed`에는 심판이 확인할 수 있는 HTTP 상태, `bodyBytes`, `jsonArrayLength`, `jsonReady`, `method`만 둡니다. 자동 점검의 요청 상관 ID와 시각은 `GET /api/checks`의 `attempts`에서 읽습니다. 이 ID는 `alephEvidence.requestKey`이며 API 서버가 발급한 ID와 구별합니다. 화면과 제출 묶음은 같은 목록을 사용합니다.
 - `npm run bundle`의 정적/API 자기 점검은 아래 특정 행만 증명하며 A/B 로그인, 엔진 판정, 운영 회수, 백업 복원을 대신하지 않습니다.
 - 실행하지 않은 행은 반드시 `미실행`으로 남깁니다. 41종 총공세는 별도 심판 시험이며 이 표의 통과나 가상 fixture 실행으로 채우지 않습니다.
 
@@ -40,10 +40,12 @@
 
 ## 기록 절차
 
-1. 새 저장점이 배포된 뒤 깨끗한 작업 트리에서 `npm run bundle`을 실행합니다. 제출 묶음과 작전실 점검 기록이 함께 생성됩니다. 보고서를 배포에 포함하려면 생성된 `artifacts/operations-report.json`과 `artifacts/submission.json`을 별도 기록 커밋으로 추가합니다. 기록의 `commit`은 실제 점검을 수행한 코드 커밋입니다.
+1. 새 저장점이 배포된 뒤 `npm run bundle`을 실행합니다. 이 명령은 `artifacts/submission.json` 하나만 씁니다. 생성한 제출 JSON과 `bundle-notes.json`은 커밋하지 않습니다. `npm run checks:table`은 운영 `GET /api/checks`의 기록을 표로 출력하며 파일을 만들지 않습니다. 표에는 검사 커밋·실제 HTTP 필드·요청 상관 ID·UTC 확인 시각을 그대로 둡니다.
 2. 승인 기기에서 자료실 화면을 열고 A 정상 요청과 B/무로그인/미승인 요청을 각각 실행합니다. 각 응답의 요청 ID와 오류 코드만 적고 응답 본문에 메모 제목·내용이 있으면 복사하지 않습니다.
 3. 로컬 판정기·탐지 시험은 `npm run decider:test`, `npm run fixture:7`, `npm run detect:test`로 실행합니다. 이를 운영 엔진 결과로 표시하지 않고 `가상 시험`이라고 기록합니다.
 4. 실제 회수, 검증 백업 복구, 실기기 승인, 41종 총공세는 제공 엔진·관리자·사전 검증 사본·심판에서 확인하기 전까지 `미실행`으로 둡니다.
+
+`GET /api/checks?case=...`는 학생 코드의 합성 입력 시험을 실제 서버에서 실행합니다. 기기 등록·정상 접속·추가 확인·정확한 경로·탐지 경계·폭주·합성 복구 검증을 다루며 `source`, `engine: ALEPH SDP 엔진`, `engineEnforced: not_run`을 반환합니다. 이 HTTP 응답의 `jsonReady=true`는 해당 학생 코드 시험이 기대와 맞았다는 뜻이며 운영 엔진 집행, 실제 A/B 소유권, 승인 완료 또는 실제 복구를 증명하지 않습니다.
 
 ## 현재 단계의 구분
 

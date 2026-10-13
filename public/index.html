@@ -379,7 +379,7 @@
       addOpsCard('탐지', [
         `운영 사건 스트림: ${result.detection?.liveEventFeed === 'not_connected' ? '미연결·미실행' : '연결됨'}`,
         `실제 사건 수: ${Number.isInteger(result.detection?.eventCount) ? result.detection.eventCount : '미실행'}`,
-        `41종 총공세: ${result.assaultSuite?.status === 'not_run' ? '미실행' : result.assaultSuite?.status ?? '확인 불가'} (${result.assaultSuite?.executedInThisReport ?? 0}/${result.assaultSuite?.total ?? 41})`,
+        result.assaultSuiteNote ?? '41종 공격 전체는 심판이 실행합니다. 전체 시험의 통과는 미확인입니다.',
       ]);
       const deviceStatus = result.revocation?.deviceStatus ?? {};
       addOpsCard('기기·회수', [

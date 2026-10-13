@@ -92,7 +92,7 @@ export async function handleOperationsRequest(request, response, suppliedContext
       records.push(...submissionChecks.attempts.map(attempt => ({
         area: '제출 점검', test: attempt.attackId, expected: attempt.expected,
         actual: attempt.observed, requestId: attempt.requestId, checkedAt: attempt.checkedAt,
-        source: `실제 HTTP 점검 · 커밋 ${submissionChecks.commit ?? '확인 불가'}`,
+        source: itemSource(attempt.attackId, submissionChecks.commit),
       })));
     }
     const submissionCheckSummary = {
@@ -109,7 +109,7 @@ export async function handleOperationsRequest(request, response, suppliedContext
         engineRuntime: 'unverified', engineNote: '이 API는 ALEPH SDP 엔진의 감사 결과를 읽지 않습니다.' },
       detection: { source: 'src/detect.mjs', liveEventFeed: 'not_connected', eventCount: null,
         status: 'not_run', liveEventNote: '실제 엔진 사건 스트림 계약이 없어 운영 사건은 미실행입니다.' },
-      assaultSuite: { total: 41, executedInThisReport: 0, passedInThisReport: 0, status: 'not_run' },
+      assaultSuiteNote: '41종 공격 전체는 심판이 실행합니다. 이 보고서는 전체 시험의 통과를 나타내지 않습니다.',
       revocation: { deviceStatus, actualRevocation: 'not_executed',
         note: '탐지 결과는 제안일 뿐이며 이 API는 기기 권한을 변경하지 않습니다.' },
       restore: { policySnapshot: { status: 'unavailable', reasonCode: 'VERIFIED_POLICY_SNAPSHOT_UNAVAILABLE' },
@@ -121,4 +121,10 @@ export async function handleOperationsRequest(request, response, suppliedContext
   } catch {
     return respond(response, 502, { error: 'OPERATIONS_STATUS_UNAVAILABLE', requestId, checkedAt });
   }
+}
+
+function itemSource(attackId, commit) {
+  return attackId.startsWith('rule_')
+    ? `학생 코드 합성 시험의 HTTP 응답 · ALEPH SDP 엔진 집행 미실행 · 커밋 ${commit ?? '확인 불가'}`
+    : `실제 HTTP 점검 · 커밋 ${commit ?? '확인 불가'}`;
 }

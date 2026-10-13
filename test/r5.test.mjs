@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 import authHandler from '../api/auth.js';
 import { createAuthProxy } from '../src/auth-proxy.mjs';
 import { deploymentIdentity } from '../scripts/deployment-identity.mjs';
 import { getLastCheckEvidence, runAttackChecks } from '../src/attack-check.mjs';
+import { runStage12RuleCheck } from '../src/stage12-rule-checks.mjs';
 
 const config = {
   step: 5,
@@ -88,14 +90,14 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
     const results = await runAttackChecks(config);
     assert.equal(results.length, 6);
     assert.match(results[0].observed, /HTTP 401/u);
-    assert.match(results[2].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
-    assert.match(results[4].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
-    assert.match(results[5].observed, /HTTP 404; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET; urlSha256=[a-f0-9]{64}/u);
+    assert.match(results[2].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET/u);
+    assert.match(results[4].observed, /HTTP 200; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET/u);
+    assert.match(results[5].observed, /HTTP 404; bodyBytes=\d+; jsonArrayLength=null; jsonReady=null; method=GET/u);
     assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/', '/api/auth']);
     assert.deepEqual(requested.map(item => item.attackId), results.map(item => item.attackId));
     assert.equal(new Set(requested.map(item => item.requestKey)).size, requested.length);
     assert.ok(requested.every(item => typeof item.requestKey === 'string' && item.requestKey.length >= 16));
-    assert.ok(results.every(item => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET; urlSha256=[a-f0-9]{64}$/u.test(item.observed)));
+    assert.ok(results.every(item => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET$/u.test(item.observed)));
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
   } finally {
@@ -121,12 +123,15 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
       assert.equal(parsed.searchParams.has('attackId'), false);
       requested.push({ path: parsed.pathname, attackId, requestKey: init.alephEvidence.requestKey });
       const headers = { 'x-vercel-id': `trace-${attackId}` };
-      if (parsed.pathname === '/api/notes' || parsed.pathname === '/api/notices') {
+      if (parsed.pathname === '/api/notes' || parsed.pathname.startsWith('/api/notes/') || parsed.pathname === '/api/notices') {
         return textOnly(new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
           status: 401, headers: { ...headers, 'content-type': 'application/json' },
         }));
       }
       if (parsed.pathname === '/data.json') return textOnly(new Response(JSON.stringify({ notes: [] }), { status: 200, headers }));
+      if (parsed.pathname === '/public/data.json') return textOnly(new Response('Not found', { status: 404, headers }));
+      if (parsed.pathname === '/api/checks') return textOnly(new Response(JSON.stringify(
+        await runStage12RuleCheck(parsed.searchParams.get('case'))), { status: 200, headers }));
       if (parsed.pathname === '/aleph.json') return textOnly(new Response(JSON.stringify({
         schema: 'aleph.defense.deployment.v1', step: 12, repoUrl: stage12.repoUrl,
         commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
@@ -146,6 +151,9 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
       'browser_supabase_key_absent', 'auth_proxy_restricts_routes', 'anonymous_notices_api',
       'operations_requires_auth', 'step_up_live_block', 'verified_backup_restore', 'device_approval_live',
     ];
+    requestIds.splice(8, 0, 'legacy_static_copy', 'anonymous_other_note',
+      'rule_device_registration', 'rule_normal_access', 'rule_step_up', 'rule_resource_zones',
+      'rule_detection_normal', 'rule_detection_burst', 'rule_policy_restore_guard');
     assert.deepEqual(results.map(result => result.attackId), requestIds);
     assert.deepEqual(requested.map(item => item.attackId), requestIds.filter(id =>
       !['step_up_live_block', 'verified_backup_restore', 'device_approval_live'].includes(id)));
@@ -159,7 +167,7 @@ test('stage 12 correlates each request through alephEvidence and leaves unreques
     assert.ok(evidence.filter(item => item.requestId).every(item => typeof item.checkedAt === 'string'));
     assert.ok(evidence.filter(item => !item.requestId).every(item => item.checkedAt === null));
     assert.ok(results.filter(result => requested.some(item => item.attackId === result.attackId))
-      .every(result => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET; urlSha256=[a-f0-9]{64}$/u.test(result.observed)
+      .every(result => /^HTTP \d{3}; bodyBytes=\d+; jsonArrayLength=(?:\d+|null); jsonReady=(?:true|false|null); method=GET$/u.test(result.observed)
         && result.observed.length <= 300));
     assert.ok(results.filter(result => !requested.some(item => item.attackId === result.attackId))
       .every(result => result.observed === 'not_run'));
@@ -178,6 +186,27 @@ function responseStub() {
     send(value) { this.payload = value; return this; },
   };
 }
+
+test('checker runs without Node imports, Buffer, TextEncoder or global crypto', async () => {
+  const source = await readFile(new URL('../src/attack-check.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /\bimport\s/u);
+  const text = JSON.stringify({ error: '인증 필요 🛡️' });
+  const isolated = runInNewContext(`${source.replace(/export /gu, '')}\n({ runAttackChecks })`, {
+    URL, AbortSignal: { timeout: () => undefined },
+    fetch: async url => {
+      const path = new URL(url).pathname;
+      return { status: path === '/api/notes' ? 401 : path === '/api/auth' ? 404 : 200,
+        headers: { get: key => key === 'x-content-type-options' ? 'nosniff' : null },
+        text: async () => path === '/api/notes' ? text : path === '/data.json'
+          ? JSON.stringify({ notes: [] }) : path === '/aleph.json'
+            ? JSON.stringify({ step: 5, allowedRoutes: ['GET /api/notes'] }) : '{}' };
+    },
+  });
+  const attempts = await isolated.runAttackChecks(config);
+  assert.equal(attempts.length, 6);
+  assert.ok(attempts.every(item => item.result === 'blocked'));
+  assert.match(attempts[0].observed, new RegExp(`bodyBytes=${Buffer.byteLength(text, 'utf8')};`));
+});
 
 const authProxyConfig = {
   identityProvider: { issuer: 'https://student.supabase.co/auth/v1' },

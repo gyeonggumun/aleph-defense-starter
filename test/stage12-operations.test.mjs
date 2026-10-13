@@ -69,8 +69,8 @@ test('operation response reports real code/DB summaries, labels unrun engine wor
     { approved: 1, pending: 1, revoked: 1, other: 0 });
   assert.equal(result.body.decider.engineRuntime, 'unverified');
   assert.equal(result.body.detection.liveEventFeed, 'not_connected');
-  assert.deepEqual(result.body.assaultSuite,
-    { total: 41, executedInThisReport: 0, passedInThisReport: 0, status: 'not_run' });
+  assert.equal(result.body.assaultSuite, undefined);
+  assert.match(result.body.assaultSuiteNote, /심판.*전체 시험/u);
   assert.equal(result.body.revocation.actualRevocation, 'not_executed');
   assert.equal(result.body.restore.policySnapshot.status, 'unavailable');
   assert.deepEqual(result.body.records.slice(0, 2).map(row => row.actual), ['allow', 'deny / device_not_registered']);

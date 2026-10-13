@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 // Student self-checks only; these observations are not the judge's verdict.
 // Never include tokens, private keys, real names, or note bodies in the result.
 let lastCheckEvidence = [];
@@ -10,8 +8,13 @@ function newRequestKey() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
-async function sha256(value) {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+function utf8ByteLength(value) {
+  let length = 0;
+  for (const character of value) {
+    const point = character.codePointAt(0);
+    length += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4;
+  }
+  return length;
 }
 
 export function getLastCheckEvidence() {
@@ -31,10 +34,14 @@ export async function runAttackChecks(config) {
   }
 
   const requestCheck = async ({ attackId, path, method = 'GET', matches }) => {
+    if (!['GET', 'HEAD'].includes(method) || requestCount >= 24) {
+      return { attackId, requestId: null, checkedAt: null, observed: 'not_run', result: 'not_run' };
+    }
     const url = new URL(path, app);
     const requestKey = newRequestKey();
     let response;
     try {
+      requestCount += 1;
       response = await fetch(url, {
         method, redirect: 'error', signal: AbortSignal.timeout(10000),
         headers: { accept: 'application/json' },
@@ -56,9 +63,8 @@ export async function runAttackChecks(config) {
       : Array.isArray(bodyJson?.notes) ? bodyJson.notes.length : null;
     const jsonReady = typeof bodyJson?.ready === 'boolean' ? bodyJson.ready : null;
     const checkedAt = new Date().toISOString();
-    const urlSha256 = await sha256(url.href);
     const requestId = requestKey;
-    const bodyBytes = bodyReadable ? Buffer.byteLength(bodyText, 'utf8') : null;
+    const bodyBytes = bodyReadable ? utf8ByteLength(bodyText) : null;
     const fields = [
       `HTTP ${response.status}`,
       `bodyBytes=${bodyBytes ?? 'null'}`,
@@ -66,7 +72,6 @@ export async function runAttackChecks(config) {
       `jsonReady=${jsonReady ?? 'null'}`,
       `method=${method}`,
     ];
-    if (urlSha256) fields.push(`urlSha256=${urlSha256}`);
     const observed = fields.join('; ');
     const ran = { response, bodyText, bodyJson, bodyReadable, checkedAt, attackId, requestId, observed };
     return { ...ran, result: matches(ran) ? 'blocked' : 'breached' };
@@ -106,7 +111,32 @@ export async function runAttackChecks(config) {
       expected: '/api/operations는 로그인 전 401 JSON과 요청 ID를 반환',
       matches: r => r.bodyReadable && r.response.status === 401
         && typeof r.bodyJson?.error === 'string' }] : []),
+    ...(config.step >= 12 ? [
+      { attackId: 'legacy_static_copy', stage: 1, path: '/public/data.json',
+        expected: '이전 public 경로는 공개 메모를 반환하지 않음',
+        matches: r => r.bodyReadable && r.response.status === 404 },
+      { attackId: 'anonymous_other_note', stage: 4,
+        path: '/api/notes/00000000-0000-4000-8000-000000000001',
+        expected: '무인증 단건 메모 요청은 JSON 401/403',
+        matches: r => r.bodyReadable && [401, 403].includes(r.response.status)
+          && typeof r.bodyJson?.error === 'string' },
+      ...[
+        ['device_registration', 6, '학생 기기 규칙: 정상 허용·미등록 거부'],
+        ['normal_access', 7, '학생 판정기: 정상 합성 요청 허용'],
+        ['step_up', 7, '학생 판정기: 복합 위험 추가 확인·새 로그인 허용'],
+        ['resource_zones', 8, '학생 구역 규칙: 정확한 경로 허용·금지 경로와 수정 거부'],
+        ['detection_normal', 9, '학생 탐지기: 정상·경계 사건은 회수 제안 없음'],
+        ['detection_burst', 9, '학생 탐지기: 계약상 폭주 사건은 회수 제안'],
+        ['policy_restore_guard', 10, '합성 정책 검증: 잘못된 사본 거부·다른 규칙 보존'],
+      ].map(([caseId, stage, expected]) => ({
+        attackId: `rule_${caseId}`, stage, expected,
+        path: `/api/checks?case=${caseId}`,
+        matches: r => r.bodyReadable && r.response.status === 200 && r.bodyJson?.ready === true
+          && r.bodyJson?.caseId === caseId && r.bodyJson?.engineEnforced === 'not_run',
+      })),
+    ] : []),
   ];
+  let requestCount = 0;
   const results = [];
   for (const check of checks) results.push({ ...check, ...(await requestCheck(check)) });
   const notRun = [
