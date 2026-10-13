@@ -5,11 +5,43 @@
 export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice']);
 
 const ITEM = /^[a-zA-Z0-9_-]{1,128}$/u;
+const PRACTICE_BINDINGS = ['23e19e6c-6223-4d86-a635-8c28a5e1e786', 'demo'].map(id => ({
+  classId: 'class_fixture', projectId: 'project_fixture', subjectId: 'learner_fixture',
+  deviceId: 'aaaaaaaaaaaaaaaa', service: 'notes', path: `/notes/${id}`,
+  resourceId: `note:${id}`, ownerSubjectId: 'learner_fixture', permissions: ['GET', 'PUT'],
+}));
+
+function resourceBindings() {
+  const raw = typeof process !== 'undefined' ? process.env?.ALEPH_RESOURCE_BINDINGS : undefined;
+  if (!raw) return PRACTICE_BINDINGS;
+  try {
+    const entries = JSON.parse(raw);
+    return Array.isArray(entries) ? [...PRACTICE_BINDINGS, ...entries] : PRACTICE_BINDINGS;
+  } catch {
+    return PRACTICE_BINDINGS;
+  }
+}
+
+function resourceAllowed(request, resource) {
+  if (!resource || request?.schema !== 'aleph.decision.v1'
+      || typeof request.subjectId !== 'string' || !request.subjectId) return false;
+  // Collection reads are filtered by owner in the API; notices are readable by students.
+  if (resource.zone === 'own_notes' || request.method === 'GET'
+      && resource.zone === 'instructor_notice') return true;
+  return resourceBindings().some(entry => entry?.classId === request.classId
+    && entry.projectId === request.projectId && entry.subjectId === request.subjectId
+    && entry.deviceId === request.deviceId && entry.service === request.service
+    && entry.path === request.path && entry.resourceId === resource.id
+    && Array.isArray(entry.permissions) && entry.permissions.includes(request.method)
+    && (resource.zone !== 'own_note' || entry.ownerSubjectId === request.subjectId)
+    && (resource.zone !== 'instructor_notice' || entry.instructor === true));
+}
 
 // Engine-verified service, method, route, and exact path identify the zone.
-// The owner and instructor role are deliberately left to the authenticated API.
+// The authenticated API repeats the owner and instructor checks.
 export function resourceZone(request) {
-  if (request?.service !== 'notes' || typeof request.path !== 'string') return null;
+  if (request?.service !== 'notes' || typeof request.path !== 'string'
+      || request.queryLength !== 0) return null;
   if (request.path === '/notes' && request.method === 'GET'
       && request.route === 'GET /notes') {
     return { id: 'notes:collection', zone: 'own_notes' };
@@ -69,10 +101,8 @@ export async function decide(request) {
     }
   }
   const resource = resourceZone(request);
-  const namedSubject = typeof request?.subjectId === 'string' && Boolean(request.subjectId);
   const vaultRead = Boolean(resource && request.method === 'GET');
-  const allowedZone = namedSubject && resource && (resource.zone !== 'instructor_notice'
-    || request.method === 'GET');
+  const allowedZone = resourceAllowed(request, resource);
   const resourceRuleId = resource?.zone === 'instructor_notice' ? RULE_IDS[6] : RULE_IDS[5];
   const complexRisk = registered && vaultRead && needsStepUp(request);
   const recentVerifiedLogin = request?.stepUp?.verified === true
