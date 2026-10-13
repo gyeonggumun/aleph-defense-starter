@@ -1,0 +1,21 @@
+{
+  "schema": "aleph.xdr.patterns.v1",
+  "source": "MITRE ATT&CK T1068 · T1078 · T1098",
+  "patterns": [
+    {
+      "name": "unexpected_admin_membership",
+      "condition": "관리자 그룹 추가가 낯선 원격 접속·여러 계정·즉시 명령 사용과 겹치거나 회수 직후 다시 관리자 권한을 얻습니다.",
+      "evidence": "MITRE ATT&CK T1078은 도용된 정상 계정의 권한 사용을, T1098은 그룹 등 계정 권한 변경을 설명합니다. 복합 신호는 이 모듈의 보수적 차단 기준입니다. https://attack.mitre.org/techniques/T1078/ https://attack.mitre.org/techniques/T1098/"
+    },
+    {
+      "name": "unexpected_privileged_command",
+      "condition": "관리자 명령 사용이 방금 얻은 권한·낯선 주소와 업무 시간 밖 접속·다른 계정 권한 사용 중 하나와 함께 확인됩니다.",
+      "evidence": "MITRE ATT&CK T1078은 정상 계정 도용으로 높은 권한을 사용하는 공격을 설명합니다. 업무 시간 하나만으로 차단하지 않습니다. https://attack.mitre.org/techniques/T1078/"
+    },
+    {
+      "name": "unexpected_session_elevation",
+      "condition": "세션이 관리자 권한으로 실제 변경되고 처음 보는 접속 주소가 함께 나타납니다. 취소·실패·계정 종류 조회 등 불명확한 권한 경보는 알림만 남깁니다.",
+      "evidence": "MITRE ATT&CK T1068은 취약점 악용을 통한 권한 상승을 설명합니다. 이 경보만으로 취약점 악용은 확정하지 않으며 권한 변경과 낯선 접속의 조합을 탐지합니다. https://attack.mitre.org/techniques/T1068/"
+    }
+  ]
+}
