@@ -66,7 +66,7 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
   try {
     globalThis.fetch = async (url, init) => {
       const parsed = new URL(String(url));
-      requested.push({ path: parsed.pathname, init });
+      requested.push({ path: parsed.pathname, attackId: parsed.searchParams.get('attackId'), init });
       if (parsed.pathname === '/api/notes') return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
         status: 401, headers: { 'content-type': 'application/json' },
       });
@@ -90,9 +90,59 @@ test('stage 5 self-check records unauthenticated denial and deployment protectio
     assert.match(results[2].observed, /\/aleph\.json에서/u);
     assert.match(results[4].observed, /API 키 없음/u);
     assert.match(results[5].observed, /JSON 404/u);
-    assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/api/auth']);
+    assert.deepEqual(requested.map(item => item.path), ['/api/notes', '/data.json', '/aleph.json', '/', '/', '/api/auth']);
+    assert.deepEqual(requested.map(item => item.attackId), results.map(item => item.attackId));
+    assert.ok(results.every(item => item.observed.includes(`attackId=${item.attackId}`)));
     assert.equal(requested[0].init.redirect, 'error');
     assert.equal(requested[0].init.headers?.Authorization, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('stage 12 tags every requested check and leaves unrequested live checks not_run', async () => {
+  const originalFetch = globalThis.fetch;
+  const requested = [];
+  const stage12 = { ...config, step: 12, originalApiUrl: config.originalApiUrl };
+  try {
+    globalThis.fetch = async url => {
+      const parsed = new URL(String(url));
+      const attackId = parsed.searchParams.get('attackId');
+      requested.push({ path: parsed.pathname, attackId });
+      const headers = { 'x-vercel-id': `trace-${attackId}` };
+      if (parsed.pathname === '/api/notes' || parsed.pathname === '/api/notices') {
+        return new Response(JSON.stringify({ error: 'UNAUTHORIZED' }), {
+          status: 401, headers: { ...headers, 'content-type': 'application/json' },
+        });
+      }
+      if (parsed.pathname === '/data.json') return new Response(JSON.stringify({ notes: [] }), { status: 200, headers });
+      if (parsed.pathname === '/aleph.json') return new Response(JSON.stringify({
+        schema: 'aleph.defense.deployment.v1', step: 12, repoUrl: stage12.repoUrl,
+        commit: 'a'.repeat(40), publicAppUrl: 'https://student-defense-123.vercel.app',
+        originalApiUrl: stage12.originalApiUrl, allowedRoutes: stage12.allowedRoutes,
+      }), { status: 200, headers });
+      if (parsed.pathname === '/api/auth') return new Response(JSON.stringify({ error: 'NOT_FOUND' }), {
+        status: 404, headers: { ...headers, 'content-type': 'application/json' },
+      });
+      if (parsed.pathname === '/api/operations') return new Response(JSON.stringify({
+        error: 'UNAUTHORIZED', requestId: 'server-request-id', checkedAt: new Date().toISOString(),
+      }), { status: 401, headers: { ...headers, 'content-type': 'application/json' } });
+      return new Response('ok', { status: 200, headers: { ...headers, 'x-content-type-options': 'nosniff' } });
+    };
+    const results = await runAttackChecks(stage12);
+    const requestIds = [
+      'anonymous_notes_api', 'public_json_empty', 'deployment_identity', 'security_header',
+      'browser_supabase_key_absent', 'auth_proxy_restricts_routes', 'anonymous_notices_api',
+      'step_up_live_block', 'verified_backup_restore', 'device_approval_live', 'operations_requires_auth',
+    ];
+    assert.deepEqual(results.map(result => result.attackId), requestIds);
+    assert.deepEqual(requested.map(item => item.attackId), requestIds.filter(id =>
+      !['step_up_live_block', 'verified_backup_restore', 'device_approval_live'].includes(id)));
+    assert.ok(results.filter(result => requested.some(item => item.attackId === result.attackId))
+      .every(result => result.observed.includes(`attackId=${result.attackId}`)
+        && result.observed.includes('UTC') && result.observed.length <= 300));
+    assert.ok(results.filter(result => !requested.some(item => item.attackId === result.attackId))
+      .every(result => result.observed.startsWith('not_run:')));
   } finally {
     globalThis.fetch = originalFetch;
   }

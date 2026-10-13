@@ -316,7 +316,7 @@
       ]);
       addOpsCard('탐지', [
         `운영 사건 스트림: ${result.detection?.liveEventFeed === 'not_connected' ? '미연결·미실행' : '연결됨'}`,
-        '121건 가상 사건 결과는 아래 표에 별도 표시됩니다.',
+        `실제 사건 수: ${Number.isInteger(result.detection?.eventCount) ? result.detection.eventCount : '미실행'}`,
         `41종 총공세: ${result.assaultSuite?.status === 'not_run' ? '미실행' : result.assaultSuite?.status ?? '확인 불가'} (${result.assaultSuite?.executedInThisReport ?? 0}/${result.assaultSuite?.total ?? 41})`,
       ]);
       const deviceStatus = result.revocation?.deviceStatus ?? {};

@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import config from '../aleph.config.json' with { type: 'json' };
 import { RULE_IDS, decide } from './decider.mjs';
-import { detect } from './detect.mjs';
 import { deviceApproved } from './device-approval.mjs';
 import { noteBackupStatus } from './restore-note.mjs';
 
@@ -24,14 +23,6 @@ function decisionRequest({ registered, requestId }) {
   };
 }
 
-function detectionFixture() {
-  const now = Date.now();
-  return Array.from({ length: 121 }, (_, index) => ({
-    at: new Date(now - (120 - index) * 1000).toISOString(),
-    method: 'GET', identity: { sub: 'redacted_fixture' },
-  }));
-}
-
 function summarizeDeviceStatuses(rows) {
   const counts = { approved: 0, pending: 0, revoked: 0, other: 0 };
   for (const row of rows ?? []) {
@@ -43,7 +34,7 @@ function summarizeDeviceStatuses(rows) {
 
 export async function handleOperationsRequest(request, response, suppliedContext, settings = process.env) {
   const requestId = randomUUID();
-  const checkedAt = new Date().toISOString();
+  let checkedAt = new Date().toISOString();
   if (request.method !== 'GET') {
     response.setHeader('Allow', 'GET');
     return respond(response, 405, { error: 'METHOD_NOT_ALLOWED', requestId, checkedAt });
@@ -72,27 +63,28 @@ export async function handleOperationsRequest(request, response, suppliedContext
     const normalInput = decisionRequest({ registered: true, requestId: randomUUID() });
     const deniedInput = decisionRequest({ registered: false, requestId: randomUUID() });
     const [normalDecision, deniedDecision] = await Promise.all([decide(normalInput), decide(deniedInput)]);
-    const events = detectionFixture();
-    const detectionResult = detect(events);
-    const detectionRequestId = randomUUID();
     const deviceStatus = summarizeDeviceStatuses(deviceRows.data);
     const backupStatus = noteBackupStatus(settings);
+    checkedAt = new Date().toISOString();
     const commit = /^[a-f0-9]{40}$/iu.test(settings.VERCEL_GIT_COMMIT_SHA ?? '')
       ? settings.VERCEL_GIT_COMMIT_SHA.slice(0, 12).toLowerCase() : 'unknown';
     const records = [
       { area: '판정기', test: '등록 기기 정상 가상 요청', expected: 'allow', actual: normalDecision.decision,
-        reasonCode: normalDecision.reasonCode, requestId: normalDecision.requestId, checkedAt, source: '학생 판정기 가상 입력' },
+        reasonCode: normalDecision.reasonCode, requestId: normalDecision.requestId, checkedAt, source: '학생 판정기 가상 입력 · 운영 엔진 기록 아님' },
       { area: '판정기', test: '미등록 기기 거부 가상 요청', expected: 'deny / device_not_registered',
         actual: `${deniedDecision.decision} / ${deniedDecision.reasonCode}`,
-        requestId: deniedDecision.requestId, checkedAt, source: '학생 판정기 가상 입력' },
-      { area: '탐지', test: '10분 안에 같은 가상 주체의 GET 121건', expected: 'propose_revocation',
-        actual: detectionResult.action, reasonCode: detectionResult.reasonCode ?? null,
-        eventCount: events.length, requestId: detectionRequestId, checkedAt, source: '합성 시험 사건' },
+        requestId: deniedDecision.requestId, checkedAt, source: '학생 판정기 가상 입력 · 운영 엔진 기록 아님' },
+      { area: '탐지', test: '실제 운영 사건 스트림', expected: '연결된 사건만 판정',
+        actual: 'not_run', reasonCode: 'LIVE_EVENT_FEED_NOT_CONNECTED',
+        requestId, checkedAt, source: '서버 연결 상태 조회' },
       { area: '회수', test: '현재 사용자 기기 상태', expected: '서버 저장 상태 요약',
         actual: deviceStatus, requestId, checkedAt, source: 'device_credentials 상태 조회' },
       { area: '복구', test: '메모 백업 검증 상태', expected: '사전 고정 해시·소유자 검증',
         actual: backupStatus.status, reasonCode: backupStatus.reasonCode,
         requestId, checkedAt, source: '서버 환경의 비공개 백업 메타데이터' },
+      { area: '자료', test: '현재 사용자 메모 건수', expected: '본문·ID를 제외한 서버 COUNT',
+        actual: Number.isInteger(noteCount.count) ? noteCount.count : null,
+        requestId, checkedAt, source: 'vault_notes COUNT 조회' },
     ];
 
     return respond(response, 200, {
@@ -100,8 +92,8 @@ export async function handleOperationsRequest(request, response, suppliedContext
       deployment: { step: config.step, commit },
       decider: { source: 'src/decider.mjs', rules: [...RULE_IDS],
         engineRuntime: 'unverified', engineNote: '이 API는 ALEPH SDP 엔진의 감사 결과를 읽지 않습니다.' },
-      detection: { source: 'src/detect.mjs', liveEventFeed: 'not_connected',
-        liveEventNote: '실제 엔진 사건 스트림 계약이 없어 운영 사건은 미실행입니다.' },
+      detection: { source: 'src/detect.mjs', liveEventFeed: 'not_connected', eventCount: null,
+        status: 'not_run', liveEventNote: '실제 엔진 사건 스트림 계약이 없어 운영 사건은 미실행입니다.' },
       assaultSuite: { total: 41, executedInThisReport: 0, passedInThisReport: 0, status: 'not_run' },
       revocation: { deviceStatus, actualRevocation: 'not_executed',
         note: '탐지 결과는 제안일 뿐이며 이 API는 기기 권한을 변경하지 않습니다.' },

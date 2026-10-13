@@ -69,7 +69,14 @@ test('operation response reports real code/DB summaries, labels unrun engine wor
   assert.equal(result.body.revocation.actualRevocation, 'not_executed');
   assert.equal(result.body.restore.policySnapshot.status, 'unavailable');
   assert.deepEqual(result.body.records.slice(0, 2).map(row => row.actual), ['allow', 'deny / device_not_registered']);
-  assert.equal(result.body.records[2].actual, 'propose_revocation');
+  assert.equal(result.body.records[2].actual, 'not_run');
+  assert.equal(result.body.records[2].eventCount, undefined);
+  assert.equal(result.body.detection.eventCount, null);
+  assert.equal(result.body.detection.status, 'not_run');
+  assert.equal(result.body.records.find(row => row.test === '현재 사용자 메모 건수').actual,
+    result.body.dataSummary.ownNoteCount);
+  assert.deepEqual(result.body.records.find(row => row.test === '현재 사용자 기기 상태').actual,
+    result.body.revocation.deviceStatus);
   assert.ok(result.body.records.every(row => row.requestId && row.checkedAt));
   const serialized = JSON.stringify(result.body);
   assert.doesNotMatch(serialized, /title|content|owner_id|credential_id|public_key|private key/iu);
@@ -97,6 +104,8 @@ test('operation room UI is hidden before device approval and its inline module p
   assert.match(html, /id="operations-panel"[^>]*hidden/u);
   assert.match(source, /operationsPanel\.hidden = !signedIn \|\| !deviceReady\(\)/u);
   assert.match(source, /operationsPanel\.hidden = false/u);
+  assert.doesNotMatch(source, /121건/u);
+  assert.match(source, /result\.detection\?\.eventCount/u);
   assert.doesNotMatch(source, /\.innerHTML\s*=/u);
   const executable = source.split(/\r?\n/u).filter(line => !line.trim().startsWith('import ')).join('\n');
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
