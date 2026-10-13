@@ -6,7 +6,7 @@ import { createLoginVerifier } from './verify-login.mjs';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 let services;
 
-function getServices() {
+export function getServices() {
   if (services) return services;
   const url = process.env.SUPABASE_URL;
   const secretKey = process.env.SUPABASE_SECRET_KEY;

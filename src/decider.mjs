@@ -3,8 +3,9 @@
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
 import { activeDenyRuleFor } from '../xdr/brute-force/ztna-rules.mjs';
 import { activeDenyRuleFor as webInjectionRuleFor } from '../xdr/web-injection/ztna-rules.mjs';
+import { resourceZone } from './resource-zone.mjs';
 
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required']);
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice']);
 
 function needsStepUp(request) {
   const signals = request?.signals;
@@ -28,13 +29,17 @@ export async function decide(request) {
     ...(webInjectionRule ? [RULE_IDS[3]] : []),
   ];
   const registered = request?.deviceRegistered === true;
-  const vaultRead = request?.service === 'notes' && request?.method === 'GET'
-    && ['GET /notes', 'GET /notes/:id'].includes(request?.route);
+  const resource = resourceZone(request);
+  const namedSubject = typeof request?.subjectId === 'string' && Boolean(request.subjectId);
+  const vaultRead = Boolean(resource && request.method === 'GET');
+  const allowedZone = namedSubject && resource && (resource.zone !== 'instructor_notice'
+    || request.method === 'GET');
+  const resourceRuleId = resource?.zone === 'instructor_notice' ? RULE_IDS[6] : RULE_IDS[5];
   const complexRisk = registered && vaultRead && needsStepUp(request);
   const recentVerifiedLogin = request?.stepUp?.verified === true
     && Number.isInteger(request.stepUp.authAgeSeconds)
     && request.stepUp.authAgeSeconds >= 0 && request.stepUp.authAgeSeconds <= 300;
-  const decision = !registered || xdrRuleIds.length || !vaultRead ? 'deny'
+  const decision = !registered || xdrRuleIds.length || !allowedZone ? 'deny'
     : complexRisk && !recentVerifiedLogin ? 'step_up' : 'allow';
   return {
     schema: 'aleph.decision.v1',
@@ -43,7 +48,9 @@ export async function decide(request) {
     reasonCode: !registered ? 'device_not_registered' : decision === 'step_up' ? 'step_up_required'
       : decision === 'allow' ? 'approved' : 'starter_not_ready',
     ruleIds: !registered ? [RULE_IDS[1], ...xdrRuleIds]
-      : xdrRuleIds.length ? xdrRuleIds : !vaultRead ? [RULE_IDS[0]]
-        : complexRisk ? [RULE_IDS[1], RULE_IDS[4]] : [RULE_IDS[1]],
+      : xdrRuleIds.length ? xdrRuleIds : !allowedZone ? [RULE_IDS[0],
+        ...(resource?.zone === 'instructor_notice' ? [RULE_IDS[6]] : [])]
+        : complexRisk ? [RULE_IDS[1], RULE_IDS[4], resourceRuleId]
+          : [RULE_IDS[1], resourceRuleId],
   };
 }

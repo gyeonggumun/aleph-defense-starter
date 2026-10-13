@@ -107,6 +107,16 @@ Supabase Auth SDK의 `signInWithPassword`와 `signOut` 호출은 유지합니다
 
 로컬 확인 순서: `npm run decider:test`로 등록·미등록·복합 위험·다시 확인한 가상 요청을 검사한 뒤 `npm run fixture:7`로 정상 `allow`와 복합 위험 `step_up`을 확인합니다. 저장점 커밋 뒤 `npm run bundle`로 제출 묶음을 갱신합니다. 브라우저 화면·자료 API·비밀 설정은 바꾸지 않았습니다.
 
+## 8단계 저장점 · 자료 자원 구역
+
+`src/resource-zone.mjs`는 엔진이 확인한 `service`·`method`·`route`·정확한 `path`로 메모 `note:<UUID>`와 강사 공지 `notice:<UUID>`를 구별합니다. 목록도 서로 다른 `notes:collection`·`notices:collection` 자원입니다. 알 수 없는 경로와 `export` 같은 비자료 경로는 기본 거부합니다. 기존 `/api/notes` 주소와 화면 메뉴는 유지했습니다. 등록 기기·XDR·복합 위험 규칙도 유지하고, 메모 읽기·수정은 판정기 경로 검사를 통과한 뒤 서버 API의 기존 `owner_id` 검사로 다시 제한합니다.
+
+학습 DB에는 `sql/stage8-instructor-notices.sql`의 `public.instructor_notices`와 가상 공지 한 건을 적용했습니다. RLS는 켜져 있고 `PUBLIC`·`anon`·`authenticated`의 테이블 권한은 회수했습니다. `/api/notices`와 `/api/notices/:id`의 읽기는 검증된 로그인만 허용합니다. 공지 수정은 `src/notices-api.mjs`가 Supabase Auth Admin에서 확인한 계정의 `app_metadata.role === 'instructor'`일 때만 허용하며, 본문의 `role`과 `user_metadata`는 무시합니다. 거부는 JSON 401·403·404로 짧게 돌려줍니다.
+
+**운영 계약 한계:** 현재 `docs/DECIDER_REQUEST.md`의 `subjectId`는 Supabase `owner_id`와 직접 비교할 수 없고, 판정 요청에는 강사 역할도 없습니다. 따라서 판정기는 B가 A의 메모 ID로 요청했는지 자체 식별할 수 없으며, 공지 수정은 판정기에서 기본 거부합니다. 메모 API의 소유자 비교는 동작하지만, 엔진이 확인한 소유권·강사 권한을 판정기에 전달하는 새 계약 전에는 판정기의 A/B 구역 차단과 강사 공지 수정 허용을 완료했다고 주장할 수 없습니다. 현재 강사 역할을 부여한 계정도 없어 실제 강사 수정 시험은 미실행입니다.
+
+로컬 확인은 `node --test test/stage8.test.mjs`, `npm run decider:test`, `npm run fixture:7` 순서로 수행합니다. 이 시험은 가상 요청이며 실제 A/B 계정의 UI 접근이나 운영 판정기를 증명하지 않습니다. 변경 저장점 뒤 `npm run bundle`로 제출 JSON을 생성합니다.
+
 ## 시작 틀의 자동 처리
 
 `vercel.json`은 정적 결과물 `public`을 배포합니다. 빌드 명령 `npm run build`는 Vercel이 제공하는 GitHub 저장소 소유자·이름, 커밋 SHA, 배포 URL을 검증하고 `public/aleph.json`을 생성합니다. 5단계부터는 쿼리·인증 정보가 없는 HTTPS `originalApiUrl`도 함께 기록합니다. 필수 값이 없으면 빌드가 실패하므로, 성공한 것처럼 빈 주소를 내보내지 않습니다. `aleph.json`의 내용만으로 저장소 소유권이나 방어 성공을 인정하지 않습니다. 심판이 공개 저장소의 실제 커밋과 배포된 자료를 따로 대조해야 합니다.
