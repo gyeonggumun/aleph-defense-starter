@@ -1,0 +1,21 @@
+{
+  "schema": "aleph.xdr.patterns.v1",
+  "source": "MITRE ATT&CK T1041 · T1048",
+  "patterns": [
+    {
+      "name": "large_unfamiliar_transfer",
+      "condition": "처음 보는 외부 목적지로 50MB 이상이 전송되거나 자료실 전체·다수 파일의 대량 외부 복사가 확인됩니다.",
+      "evidence": "MITRE ATT&CK T1041·T1048은 명령 통로 또는 다른 프로토콜을 통한 자료 유출을 설명합니다. 50MB와 낯선 목적지의 조합은 이 모듈의 학습용 기준이며 통로 종류를 임의 확정하지 않습니다. https://attack.mitre.org/techniques/T1041/ https://attack.mitre.org/techniques/T1048/"
+    },
+    {
+      "name": "repeated_bulk_channel",
+      "condition": "50MB 이상 전송이 5회 이상 반복되거나 낯선 포트로 다수 파일이 연속 전송됩니다.",
+      "evidence": "MITRE ATT&CK T1041은 기존 명령 통로로, T1048은 다른 프로토콜로 자료가 나가는 행위를 설명합니다. 반복·용량·낯선 통로가 겹칠 때만 차단 후보로 둡니다. https://attack.mitre.org/techniques/T1041/ https://attack.mitre.org/techniques/T1048/"
+    },
+    {
+      "name": "off_hours_archive_transfer",
+      "condition": "업무 시간 밖 압축 파일 전송 또는 낯선 목적지로 여러 압축 파일 전송이 50MB 이상 용량과 함께 확인됩니다.",
+      "evidence": "MITRE ATT&CK T1048은 명령 통로 외 프로토콜을 통한 유출을 설명합니다. 압축·시각 단독 신호는 증명이 아니며 실제 외부 전송과 용량을 함께 검사합니다. https://attack.mitre.org/techniques/T1048/"
+    }
+  ]
+}

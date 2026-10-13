@@ -2,7 +2,7 @@
 // 엔진이 확인한 등록 기기의 자료실 읽기만 허용합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
 
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice', 'xdr.known_cve_source_ip', 'xdr.persistence_source_ip', 'xdr.privilege_session']);
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'xdr.brute_force_source_ip', 'xdr.web_injection_source_ip', 'step_up_required', 'resource.own_note', 'resource.instructor_notice', 'xdr.known_cve_source_ip', 'xdr.persistence_source_ip', 'xdr.privilege_session', 'xdr.exfiltration_destination']);
 
 const ITEM_PATHS = Object.freeze({
   'GET /api/notes/:id': /^\/api\/notes\/(?!\.{1,2}$)[^/?#%\\\x00-\x1f]+$/u,

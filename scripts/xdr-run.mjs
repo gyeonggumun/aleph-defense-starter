@@ -60,7 +60,7 @@ export async function runXdr({ root, moduleKey, writeError = (line) => console.e
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error;
     }
-  } else if (['known-cve', 'persistence', 'privilege'].includes(moduleKey)) {
+  } else if (['known-cve', 'persistence', 'privilege', 'exfiltration'].includes(moduleKey)) {
     const { respond } = await import(pathToFileURL(join(root, 'xdr', moduleKey, 'respond.mjs')).href);
     await respond({ root, alerts: fixture.alerts, decisions });
   }

@@ -257,6 +257,20 @@ Supabase Auth 세션의 영구 브라우저 저장을 끄고 이전 버전의 �
 
 재현 명령: `npm run xdr:run -- privilege`, 검증 명령: `node --test test/xdr-privilege.test.mjs test/xdr-run.test.mjs test/decider-isolated.test.mjs`. 2026-10-13 로컬 합성 시험 결과는 block 9 · alert 8 · record 9, 판정기 재전송 9건 거부·17건 허용·정상 오차단 0건입니다. 같은 주소의 다른 계정 허용도 확인했습니다. 단독 파일·빈 VM·비밀값 가림·패턴 대조·위조 후보·만료·재실행·계약 시험 13개가 통과했습니다. 임시 파일 이름 변경 제한으로 실패한 두 시험은 동일 명령을 권한이 있는 환경에서 재실행했습니다. 최종 점수는 심판 재제출 뒤 확인합니다.
 
+## 보너스 xdr-06 저장점 · 자료 빼돌리기 탐지
+
+`xdr/exfiltration/read-alerts.mjs`는 `xdr/fixtures/exfiltration.json`을 바꾸지 않고 시각·출발 주소·가상 계정·규칙 수준·가린 설명 다섯 항목만 읽습니다. 확인 명령은 `node xdr/exfiltration/read-alerts.mjs`이며 원본 30건과 출력 30줄이 일치합니다. 판단기는 이 읽기 모듈을 불러오지 않습니다.
+
+`patterns.json`의 세 패턴은 낯선 목적지 대용량 전송, 반복되는 대량 통로 전송, 업무 시간 밖 압축 자료 전송입니다. MITRE ATT&CK T1041·T1048에 근거를 붙였으며 JSON과 `decide.mjs` 맨 위 상수는 같습니다. 통로·프로토콜 증거가 없으면 특정 기법을 확정하지 않습니다. 학습용 용량 기준은 50MB, 반복 기준은 5회이며 목적지·용량·반복·압축·낯선 포트 등 복합 근거가 있어야 block입니다. 용량·시각·규칙 수준 하나만으로 차단하지 않고 실패·목적지 부재·준비만 된 압축 파일은 알림으로 남깁니다.
+
+`decide(alert)`는 import·파일 읽기/쓰기·외부 질의 없이 action·confidence·reason 세 값을 반환합니다. 확신도 0.85 이상 block, 0.5 이상 alert, 나머지 record이며 이유에는 짧은 패턴 이름만 남깁니다.
+
+`respond.mjs`는 판단을 다시 대조하고 유효한 목적지의 block 후보만 `deny-rules.json`에 저장합니다. 출발 주소를 목적지로 대체하지 않습니다. 각 규칙에는 `xdr.exfiltration_destination`, 근거 경보 ID와 처리 시각부터 24시간의 만료 시각이 있습니다. block·alert의 가린 메타데이터를 `xdr/alerts.log` 끝에 한 줄씩 추가하며 원본·다른 모듈 규칙·기존 감사 이력을 보존합니다. 재실행 시 규칙은 중복되지 않으며 만료 뒤 목적지 요청이 허용됩니다.
+
+연결 함수는 `decideTransfer({request, destinationAddress})`입니다. 기존 `src/decider.mjs`의 기기·구역·추가 확인 판정을 먼저 따르고 allow인 경우에만 서버가 확인한 목적지를 추가 검사합니다. 등록 거부나 step_up을 allow로 바꾸지 않고 응답 다섯 항목도 유지합니다. 목적지 인자는 서버의 실제 송신 경로에서 확인해야 하며 브라우저 헤더를 믿지 않습니다. 목적지를 확인할 수 없으면 거부합니다. 현재 ALEPH 요청 계약에는 목적지 필드가 없으므로 이를 임의로 추가하지 않았고, 실제 송신 서비스·운영 엔진 연결은 미실행입니다. 로컬 연결 검증을 운영 반출 방지 완료로 표시하지 않습니다.
+
+재현 명령: `npm run xdr:run -- exfiltration`, 검증 명령: `node --test test/xdr-exfiltration.test.mjs test/xdr-run.test.mjs test/decider-isolated.test.mjs`. 2026-10-13 결과는 block 10 · alert 10 · record 10입니다. 실제 로컬 연결 재전송에서 공격 전송 10건 거부, 목적지가 있는 나머지 19건 허용, 목적지 없는 준비 경보 1건 알림, 정상 오차단 0건을 확인했습니다. 출발 주소는 이번 목적지 규칙으로 차단되지 않았습니다. 단독 파일·빈 VM·비밀값 가림·패턴 대조·위조 후보·만료·재실행·기존 판정 유지·계약 시험 13개가 통과했습니다. 임시 파일 이름 변경 제한으로 중단된 두 시험은 동일 명령을 권한이 있는 환경에서 재실행했습니다. 최종 점수는 심판 재제출 뒤 확인합니다.
+
 ## 12단계 점검 기록 재현
 
 학생 작업은 판정기 `src/decider.mjs`, 탐지 규칙 `src/detect.mjs`, 접속 화면 `public/index.html`, 자료 API `api/`, 복구 검증 `scripts/recover-policy.mjs`입니다. 제공 엔진의 출처는 ALEPH SDP 엔진입니다. 아래 합성 입력 시험은 학생 코드의 실행 결과이며 엔진의 실제 접속 집행·권한 회수·백업 복원을 대신하지 않습니다.

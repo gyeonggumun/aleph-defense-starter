@@ -55,3 +55,5 @@ node scripts/xdr-run.mjs brute-force
 지속성 경보는 `npm run xdr:run -- persistence`로 실행합니다. `persistence/decide.mjs`의 판단 뒤 `persistence/respond.mjs`가 확인된 block만 24시간의 만료·근거 경보 ID가 있는 임시 규칙으로 연결하고 block·alert를 기존 `alerts.log` 끝에 추가합니다. 정상 이벤트는 격리하지 않습니다. `src/decider.mjs`의 `xdr.persistence_source_ip` 연결은 로컬 IP 경보 시험이며 ALEPH SDP 운영 엔진의 실제 기기 격리와 구별합니다.
 
 권한 변경 경보는 `npm run xdr:run -- privilege`로 실행합니다. `privilege/decide.mjs`는 순수 판단만 하고 `privilege/respond.mjs`가 가명 주체와 접속 주소를 함께 대조하는 `xdr.privilege_session` 임시 규칙과 알림 기록을 처리합니다. 공개 시험 별칭의 로컬 가명은 운영 신원이 아닙니다. 실제 세션 회수에는 서버가 검증한 계정 매핑과 엔진 연결이 필요하며 미연결 결과는 not_run입니다.
+
+외부 반출 경보는 `npm run xdr:run -- exfiltration`로 실행합니다. `exfiltration/respond.mjs`는 block 후보의 목적지 주소에만 만료·근거 경보 ID가 있는 거부 규칙을 추가합니다. `decideTransfer({request,destinationAddress})`는 기존 판정 뒤 서버가 확인한 목적지를 추가 검사하며, 출발 주소 차단과 혼동하지 않습니다. 운영 송신 경로 연결은 별도이며 현재 검증은 로컬 합성 경보입니다.
